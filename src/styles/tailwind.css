@@ -1,0 +1,160 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Core Colors */
+    --color-background: #F8F9FA; /* Near White/Light Gray */
+    --color-foreground: #212529; /* Dark Gray for Text */
+    --color-border: #DEE2E6; /* Subtle Border */
+    --color-input: #FFFFFF;
+    --color-ring: #004D99; /* Primary Navy */
+    
+    /* Card Colors */
+    --color-card: #FFFFFF;
+    --color-card-foreground: #212529;
+    
+    /* Popover Colors */
+    --color-popover: #FFFFFF;
+    --color-popover-foreground: #212529;
+    
+    /* Muted Colors */
+    --color-muted: #F1F3F5; /* Lighter Gray for Muted Backgrounds */
+    --color-muted-foreground: #6C757D; /* Medium Gray */
+    
+    /* Primary Colors (Navy Blue) */
+    --color-primary: #004D99; /* Deep Navy Blue */
+    --color-primary-foreground: #FFFFFF;
+    
+    /* Secondary Colors (Lighter Blue/Cyan) */
+    --color-secondary: #0099CC; /* Bright Blue/Cyan */
+    --color-secondary-foreground: #FFFFFF;
+    
+    /* Accent Colors (Orange/Gold) */
+    --color-accent: #FFC107; /* Gold/Amber */
+    --color-accent-foreground: #212529; /* Dark text on bright accent */
+    
+    /* Success Colors */
+    --color-success: #28A745; /* Green */
+    --color-success-foreground: #FFFFFF;
+    
+    /* Warning Colors */
+    --color-warning: #FFC107; /* Yellow/Amber (Same as Accent) */
+    --color-warning-foreground: #212529;
+    
+    /* Error/Destructive Colors */
+    --color-error: #DC3545; /* Red */
+    --color-error-foreground: #FFFFFF;
+    --color-destructive: #DC3545;
+    --color-destructive-foreground: #FFFFFF;
+    
+    /* Radius */
+    --radius: 0.5rem; /* Slightly larger radius for a modern feel */
+  }
+
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', sans-serif;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter', sans-serif;
+  }
+  
+  .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+@layer components {
+  /* Depth-Aware Cards */
+  .card-subtle {
+    @apply shadow-subtle hover:shadow-moderate transition-shadow duration-300 rounded-lg;
+  }
+  
+  .card-moderate {
+    @apply shadow-moderate hover:shadow-prominent transition-shadow duration-300 rounded-lg;
+  }
+  
+  .card-prominent {
+    @apply shadow-prominent transition-shadow duration-300 rounded-xl;
+  }
+  
+  /* Glassmorphism */
+  .glass {
+    @apply backdrop-blur-lg bg-white/10 border border-white/30;
+  }
+  
+  /* Gradient Accents */
+  .gradient-primary {
+    /* Navy to light blue gradient */
+    background: linear-gradient(135deg, var(--color-primary) 0%, #007bb6 100%);
+  }
+  
+  .gradient-accent {
+    /* Gold/Amber to a lighter tone gradient */
+    background: linear-gradient(45deg, var(--color-accent), #FFD700); 
+  }
+  
+  /* Loading Shimmer - Removed @apply shimmer to ensure all animation keys are defined in tailwind.config.js */
+  
+  /* Micro-animations */
+  .transition-smooth {
+    transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .transition-hover {
+    transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  /* Status Colors */
+.status-success  {
+    @apply text-success;
+  }
+.status-warning  {
+    @apply text-warning;
+  }
+.status-error  {
+    @apply text-error;
+  }
+.status-info  {
+    @apply text-primary;
+  }
+}
+
+@layer utilities {
+  /* Spacing System - 8px base unit */
+  .space-xs { @apply p-2; } /* 8px */
+  .space-sm { @apply p-4; } /* 16px */
+  .space-md { @apply p-6; } /* 24px */
+  .space-lg { @apply p-8; } /* 32px */
+  .space-xl { @apply p-12; } /* 48px */
+  .space-2xl { @apply p-16; } /* 64px */
+  
+  /* Focus styles */
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
+  }
+  
+  /* Reduced motion support */
+  @media (prefers-reduced-motion: reduce) {
+    .transition-smooth,
+    .transition-hover,
+    .card-subtle,
+    .card-moderate,
+    .card-prominent {
+      transition: none;
+    }
+    
+    .shimmer {
+      animation: none;
+    }
+  }
+}

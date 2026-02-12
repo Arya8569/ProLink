@@ -1,0 +1,42 @@
+[
+  {
+    "id": "a1b2c3d4-0001-4001-8001-000000000001",
+    "posted_by_user_id": "4182c972-75a7-42f8-89c8-440a9ea757f1",
+    "title": "Senior Frontend Developer",
+    "company": "TechCorp Inc.",
+    "location": "San Francisco, CA",
+    "job_type": "Full-time"
+  },
+  {
+    "id": "a1b2c3d4-0002-4002-8002-000000000002",
+    "posted_by_user_id": "4182c972-75a7-42f8-89c8-440a9ea757f1",
+    "title": "Product Manager",
+    "company": "StartupXYZ",
+    "location": "New York, NY",
+    "job_type": "Full-time"
+  },
+  {
+    "id": "a1b2c3d4-0003-4003-8003-000000000003",
+    "posted_by_user_id": "4182c972-75a7-42f8-89c8-440a9ea757f1",
+    "title": "UX/UI Designer",
+    "company": "Design Studio",
+    "location": "Austin, TX",
+    "job_type": "Full-time"
+  },
+  {
+    "id": "a1b2c3d4-0004-4004-8004-000000000004",
+    "posted_by_user_id": "4182c972-75a7-42f8-89c8-440a9ea757f1",
+    "title": "Data Scientist",
+    "company": "Analytics Pro",
+    "location": "Seattle, WA",
+    "job_type": "Full-time"
+  },
+  {
+    "id": "a1b2c3d4-0005-4005-8005-000000000005",
+    "posted_by_user_id": "4182c972-75a7-42f8-89c8-440a9ea757f1",
+    "title": "DevOps Engineer",
+    "company": "CloudTech Solutions",
+    "location": "Denver, CO",
+    "job_type": "Full-time"
+  }
+]
