@@ -34,8 +34,8 @@ const PipelineOverview = ({ pipelineData, onStageChange, onBulkAction }) => {
   };
 
   const toggleCandidateSelection = (candidateId) => {
-    setSelectedCandidates(prev => 
-      prev?.includes(candidateId) 
+    setSelectedCandidates(prev =>
+      prev?.includes(candidateId)
         ? prev?.filter(id => id !== candidateId)
         : [...prev, candidateId]
     );
@@ -76,11 +76,11 @@ const PipelineOverview = ({ pipelineData, onStageChange, onBulkAction }) => {
           </div>
         )}
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-6 gap-4">
+      <div className="flex gap-4 overflow-x-auto pb-4 items-start">
         {stages?.map((stage) => (
           <div
             key={stage?.id}
-            className="bg-muted/50 rounded-lg p-4 min-h-[400px]"
+            className="bg-muted/50 rounded-lg p-4 min-w-[280px] w-[320px] shrink-0"
             onDragOver={handleDragOver}
             onDrop={(e) => handleDrop(e, stage?.id)}
           >
@@ -100,46 +100,43 @@ const PipelineOverview = ({ pipelineData, onStageChange, onBulkAction }) => {
                   key={candidate?.id}
                   draggable
                   onDragStart={(e) => handleDragStart(e, candidate)}
-                  className={`bg-card border border-border rounded-lg p-3 cursor-move hover:shadow-moderate transition-smooth ${
-                    selectedCandidates?.includes(candidate?.id) ? 'ring-2 ring-primary' : ''
-                  }`}
+                  className={`bg-card border border-border rounded-lg p-3 cursor-move hover:shadow-moderate transition-smooth ${selectedCandidates?.includes(candidate?.id) ? 'ring-2 ring-primary' : ''
+                    }`}
                 >
                   <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-start space-x-2 overflow-hidden">
                       <input
                         type="checkbox"
                         checked={selectedCandidates?.includes(candidate?.id)}
                         onChange={() => toggleCandidateSelection(candidate?.id)}
-                        className="rounded border-border"
+                        className="rounded border-border mt-1 shrink-0"
                       />
-                      <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-medium">
+                      <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-medium shrink-0">
                         {candidate?.name?.charAt(0)}
                       </div>
                     </div>
-                    <div className="flex items-center space-x-1">
+                    <div className="flex items-center space-x-1 shrink-0">
                       {candidate?.priority === 'high' && (
                         <Icon name="Star" size={12} className="text-accent" />
                       )}
-                      <div className={`w-2 h-2 rounded-full ${
-                        candidate?.matchScore >= 90 ? 'bg-success' :
-                        candidate?.matchScore >= 70 ? 'bg-warning' : 'bg-error'
-                      }`} />
+                      <div className={`w-2 h-2 rounded-full ${candidate?.matchScore >= 90 ? 'bg-success' :
+                          candidate?.matchScore >= 70 ? 'bg-warning' : 'bg-error'
+                        }`} />
                     </div>
                   </div>
-                  
-                  <h4 className="font-medium text-sm text-foreground mb-1">{candidate?.name}</h4>
-                  <p className="text-xs text-muted-foreground mb-2">{candidate?.position}</p>
-                  
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">{candidate?.experience}</span>
-                    <span className={`font-medium ${
-                      candidate?.matchScore >= 90 ? 'text-success' :
-                      candidate?.matchScore >= 70 ? 'text-warning' : 'text-error'
-                    }`}>
+
+                  <h4 className="font-medium text-sm text-foreground mb-1 break-words">{candidate?.name}</h4>
+                  <p className="text-xs text-muted-foreground mb-2 break-words">{candidate?.position}</p>
+
+                  <div className="flex items-center justify-between text-xs flex-wrap gap-2">
+                    <span className="text-muted-foreground truncate max-w-[120px]" title={candidate?.experience}>{candidate?.experience}</span>
+                    <span className={`font-medium shrink-0 ${candidate?.matchScore >= 90 ? 'text-success' :
+                        candidate?.matchScore >= 70 ? 'text-warning' : 'text-error'
+                      }`}>
                       {candidate?.matchScore}% match
                     </span>
                   </div>
-                  
+
                   {candidate?.lastActivity && (
                     <div className="flex items-center space-x-1 mt-2 text-xs text-muted-foreground">
                       <Icon name="Clock" size={10} />
