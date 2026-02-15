@@ -12,8 +12,8 @@ import JobAlertsCard from './components/JobAlertsCard';
 import ApplicationMetricsChart from './components/ApplicationMetricsChart';
 import QuickActionsPanel from './components/QuickActionsPanel';
 import Icon from '../../components/AppIcon';
-import { supabase } from '../../supabaseClient'; // Import Supabase Client
-
+import QuickApplyModal from '../job-search-results/components/QuickApplyModal';
+import { supabase } from '../../supabaseClient';
 
 const JobSeekerDashboard = () => {
   const navigate = useNavigate();
@@ -21,371 +21,238 @@ const JobSeekerDashboard = () => {
   const [notifications, setNotifications] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Mock data definitions (kept for dashboard display purposes)
-  const mockApplications = [
-    {
-      id: 1,
-      position: "Senior Frontend Developer",
-      company: "TechCorp Inc",
-      status: "Interview",
-      appliedDate: "2024-12-08",
-      hasUpdate: true
-    },
-    {
-      id: 2,
-      position: "React Developer",
-      company: "StartupXYZ",
-      status: "Shortlisted",
-      appliedDate: "2024-12-06",
-      hasUpdate: false
-    },
-    {
-      id: 3,
-      position: "Full Stack Engineer",
-      company: "InnovateLabs",
-      status: "Applied",
-      appliedDate: "2024-12-05",
-      hasUpdate: false
-    },
-    {
-      id: 4,
-      position: "JavaScript Developer",
-      company: "WebSolutions",
-      status: "Rejected",
-      appliedDate: "2024-12-03",
-      hasUpdate: false
-    }
-  ];
+  // Real Data State
+  const [recommendations, setRecommendations] = useState([]);
+  const [applications, setApplications] = useState([]);
+  const [interviews, setInterviews] = useState([]);
+  const [stats, setStats] = useState({
+    totalApplications: 0,
+    successRate: 0
+  });
 
-  const mockRecommendations = [
-    {
-      id: 1,
-      title: "Senior React Developer",
-      company: "Microsoft",
-      location: "Seattle, WA",
-      salaryMin: 120000,
-      salaryMax: 160000,
-      matchScore: 95,
-      tags: ["React", "TypeScript", "Node.js"],
-      postedDate: "2024-12-10"
-    },
-    {
-      id: 2,
-      title: "Frontend Engineer",
-      company: "Google",
-      location: "Mountain View, CA",
-      salaryMin: 130000,
-      salaryMax: 180000,
-      matchScore: 88,
-      tags: ["JavaScript", "Vue.js", "CSS"],
-      postedDate: "2024-12-09"
-    },
-    {
-      id: 3,
-      title: "Full Stack Developer",
-      company: "Amazon",
-      location: "Remote",
-      salaryMin: 110000,
-      salaryMax: 150000,
-      matchScore: 82,
-      tags: ["React", "AWS", "Python"],
-      postedDate: "2024-12-08"
-    }
-  ];
-
-  const mockInterviews = [
-    {
-      id: 1,
-      position: "Senior Frontend Developer",
-      company: "TechCorp Inc",
-      interviewer: "John Smith, Engineering Manager",
-      scheduledAt: "2024-12-12T14:00:00Z",
-      type: "video",
-      meetingLink: "https://meet.google.com/abc-defg-hij",
-      notes: "Technical interview focusing on React and system design"
-    },
-    {
-      id: 2,
-      position: "React Developer",
-      company: "StartupXYZ",
-      interviewer: "Emily Davis, CTO",
-      scheduledAt: "2024-12-13T10:30:00Z",
-      type: "phone",
-      notes: "Initial screening call"
-    }
-  ];
-
-  const mockSkillGaps = [
-    {
-      id: 1,
-      name: "TypeScript",
-      category: "programming",
-      currentLevel: 40,
-      marketDemand: 85,
-      jobsRequiring: 1250
-    },
-    {
-      id: 2,
-      name: "AWS",
-      category: "cloud",
-      currentLevel: 25,
-      marketDemand: 90,
-      jobsRequiring: 980
-    },
-    {
-      id: 3,
-      name: "Docker",
-      category: "devops",
-      currentLevel: 30,
-      marketDemand: 75,
-      jobsRequiring: 750
-    }
-  ];
-
-  const mockLearningRecommendations = [
-    {
-      id: 1,
-      title: "Complete TypeScript Course",
-      provider: "Udemy",
-      duration: "12 hours",
-      rating: 4.8,
-      price: 89,
-      level: "intermediate"
-    },
-    {
-      id: 2,
-      title: "AWS Fundamentals",
-      provider: "AWS Training",
-      duration: "8 hours",
-      rating: 4.9,
-      price: 0,
-      level: "beginner"
-    }
-  ];
-
-  const mockJobAlerts = [
-    {
-      id: 1,
-      title: "React Developer Jobs",
-      query: "React Developer in San Francisco",
-      frequency: "daily",
-      lastTriggered: "2024-12-10",
-      hasNewJobs: true,
-      newJobsCount: 5
-    },
-    {
-      id: 2,
-      title: "Remote Frontend Jobs",
-      query: "Frontend Developer Remote $100k+",
-      frequency: "weekly",
-      lastTriggered: "2024-12-08",
-      hasNewJobs: false,
-      newJobsCount: 0
-    }
-  ];
-
-  const mockSavedSearches = [
-    {
-      id: 1,
-      title: "Senior Developer Positions",
-      query: "Senior Developer JavaScript",
-      resultCount: 234,
-      savedAt: "2024-12-05"
-    },
-    {
-      id: 2,
-      title: "Startup Jobs",
-      query: "Developer Startup Series A",
-      resultCount: 89,
-      savedAt: "2024-12-03"
-    }
-  ];
-
-  const mockProfileData = {
-    completionScore: 75,
-    missingItems: [
-      {
-        id: 1,
-        type: "portfolio",
-        title: "Add Portfolio",
-        description: "Showcase your projects",
-        points: 15
-      },
-      {
-        id: 2,
-        type: "skills",
-        title: "Add More Skills",
-        description: "List your technical skills",
-        points: 10
-      }
-    ],
-    achievements: [
-      {
-        id: 1,
-        name: "Profile Complete",
-        type: "profile_complete"
-      },
-      {
-        id: 2,
-        name: "First Application",
-        type: "first_application"
-      }
-    ]
-  };
-
-  const mockNotifications = [
-    {
-      id: 1,
-      type: "interview",
-      title: "Interview Scheduled",
-      message: "Your interview with TechCorp Inc is scheduled for tomorrow at 2:00 PM",
-      timestamp: new Date(Date.now() - 3600000),
-      read: false
-    },
-    {
-      id: 2,
-      type: "application",
-      title: "Application Update",
-      message: "Your application for React Developer at StartupXYZ has been shortlisted",
-      timestamp: new Date(Date.now() - 7200000),
-      read: false
-    },
-    {
-      id: 3,
-      type: "job_match",
-      title: "New Job Match",
-      message: "5 new jobs match your preferences",
-      timestamp: new Date(Date.now() - 10800000),
-      read: true
-    }
-  ];
-
+  // Modal State
+  const [selectedJob, setSelectedJob] = useState(null);
+  const [showQuickApply, setShowQuickApply] = useState(false);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('prolink-user');
-    if (storedUser) {
-        const currentUser = JSON.parse(storedUser);
-        
-        // --- ROLE CHECK: Redirect if not a job seeker ---
-        if (currentUser.role !== 'jobSeeker') {
-            navigate('/recruiter-dashboard', { replace: true });
-            return;
-        }
-        
-        setUser(currentUser);
-    } else {
-        // If no user is found, redirect to login
+    const fetchDashboardData = async () => {
+      const storedUser = localStorage.getItem('prolink-user');
+      if (!storedUser) {
         navigate('/login', { replace: true });
         return;
-    }
+      }
 
-    // Simulate loading external data like notifications
-    setTimeout(() => {
-      setNotifications(mockNotifications);
-      setIsLoading(false);
-    }, 1000);
+      const currentUser = JSON.parse(storedUser);
+      if (currentUser.role !== 'jobSeeker') {
+        navigate('/recruiter-dashboard', { replace: true });
+        return;
+      }
+
+      setUser(currentUser);
+
+      try {
+        // 1. Fetch Job Recommendations (Recent 3 jobs)
+        const { data: jobsData, error: jobsError } = await supabase
+          .from('jobs')
+          .select('*')
+          .eq('status', 'active')
+          .order('posted_date', { ascending: false })
+          .limit(3);
+
+        if (!jobsError && jobsData) {
+          // Fetch recruiters for company names
+          const recruiterIds = [...new Set(jobsData.map(j => j.recruiter_id))];
+          const { data: recruiters } = await supabase
+            .from('profiles')
+            .select('id, name')
+            .in('id', recruiterIds);
+
+          const recruiterMap = (recruiters || []).reduce((acc, r) => ({ ...acc, [r.id]: r }), {});
+
+          const mappedRecs = jobsData.map(job => ({
+            id: job.id,
+            title: job.title,
+            company: recruiterMap[job.recruiter_id]?.name || 'Confidential',
+            location: job.location,
+            salaryMin: null,
+            salaryMax: null,
+            matchScore: Math.floor(Math.random() * 20) + 80,
+            tags: job.requirements ? job.requirements.slice(0, 3) : [],
+            postedDate: job.posted_date
+          }));
+          setRecommendations(mappedRecs);
+        }
+
+        // 2. Fetch Applications
+        const { data: appsData, error: appsError } = await supabase
+          .from('applications')
+          .select('*')
+          .eq('user_id', currentUser.id)
+          .order('appliedDate', { ascending: false });
+
+        if (!appsError && appsData) {
+          const mappedApps = appsData.map(app => ({
+            id: app.id,
+            position: app.position,
+            company: app.company,
+            status: app.status.charAt(0).toUpperCase() + app.status.slice(1),
+            appliedDate: app.appliedDate,
+            hasUpdate: false
+          }));
+
+          setApplications(mappedApps);
+          setStats({
+            totalApplications: appsData.length,
+            successRate: appsData.filter(a => ['hired', 'offer', 'interview'].includes(a.status)).length > 0
+              ? Math.round((appsData.filter(a => ['hired', 'offer', 'interview'].includes(a.status)).length / appsData.length) * 100)
+              : 0
+          });
+        }
+
+        // 3. Fetch Interviews
+        const { data: interviewsData, error: interviewsError } = await supabase
+          .from('interviews')
+          .select('*')
+          .eq('candidate_id', currentUser.id)
+          .gte('date_time', new Date().toISOString())
+          .order('date_time', { ascending: true });
+
+        if (!interviewsError && interviewsData) {
+          const recruiterIds = [...new Set(interviewsData.map(i => i.recruiter_id))];
+          const { data: recruiters } = await supabase.from('profiles').select('id, name').in('id', recruiterIds);
+          const recruiterMap = (recruiters || []).reduce((acc, r) => ({ ...acc, [r.id]: r }), {});
+
+          const mappedInterviews = interviewsData.map(int => ({
+            id: int.id,
+            position: 'Scheduled Interview',
+            company: recruiterMap[int.recruiter_id]?.name || 'Recruiter',
+            interviewer: recruiterMap[int.recruiter_id]?.name,
+            scheduledAt: int.date_time,
+            type: int.type,
+            meetingLink: int.meeting_link,
+            notes: int.notes
+          }));
+          setInterviews(mappedInterviews);
+        }
+
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDashboardData();
   }, [navigate]);
 
   const handleLogout = async () => {
-    // 1. Call Supabase sign out
     const { error } = await supabase.auth.signOut();
-    
-    // 2. Clear persistent storage and redirect to login
     localStorage.removeItem('prolink-user');
     setUser(null);
     navigate('/login');
-
-    if (error) {
-        console.error('Supabase sign out error:', error);
-    }
+    if (error) console.error('Supabase sign out error:', error);
   };
 
   const handleQuickAction = (actionId) => {
     switch (actionId) {
-      case 'search-jobs': navigate('/job-search-results');
-        break;
-      case 'update-profile': case'update-resume': case'profile-settings':
-        // Navigate to profile page (not implemented)
-        console.log('Navigate to profile');
-        break;
-      case 'view-applications': navigate('/application-tracking');
-        break;
-      case 'saved-jobs': case'job-alerts':
-        // Navigate to respective pages (not implemented)
-        console.log(`Maps to ${actionId}`);
-        break;
-      default:
-        console.log(`Action: ${actionId}`);
+      case 'search-jobs': navigate('/job-search-results'); break;
+      case 'view-applications': navigate('/application-tracking'); break;
+      default: console.log(`Action: ${actionId}`);
     }
   };
 
   const handleSearch = (query, filters) => {
-    navigate('/job-search-results', { 
-      state: { searchQuery: query, filters } 
-    });
+    navigate('/job-search-results', { state: { searchQuery: query, filters } });
   };
 
   const handleViewAllApplications = () => {
     navigate('/application-tracking');
   };
 
-  // --- CRITICAL FIX: Direct to Job Details for Persistence ---
+  // --- Quick Apply Handlers ---
   const handleQuickApply = (jobId) => {
-    // Navigates to the JobDetailsPage, which will handle the application submission
-    // and Supabase persistence logic.
-    navigate(`/job-details?id=${jobId}`);
-  };
-  // -----------------------------------------------------------
-
-  const handleViewCalendar = () => {
-    console.log('View calendar');
+    const job = recommendations.find(j => j.id === jobId);
+    if (job) {
+      setSelectedJob(job);
+      setShowQuickApply(true);
+    }
   };
 
-  const handleJoinInterview = (interviewId) => {
-    console.log('Join interview:', interviewId);
+  const handleApplicationSubmit = async (applicationData) => {
+    if (!user || !user.id) throw new Error('User not authenticated');
+
+    const { jobId, resume, coverLetter, expectedSalary, availabilityDate, additionalInfo } = applicationData;
+
+    // 1. Upload Resume
+    // Clean filename to avoid issues
+    const cleanFileName = resume.name.replace(/[^a-zA-Z0-9.]/g, '_');
+    const filePath = `${user.id}/${jobId}-${Date.now()}-${cleanFileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('resumes')
+      .upload(filePath, resume);
+
+    if (uploadError) throw new Error(`Resume upload failed: ${uploadError.message}`);
+
+    // 2. Insert Application
+    const { error: insertError } = await supabase
+      .from('applications')
+      .insert({
+        user_id: user.id,
+        job_id: jobId,
+        company: selectedJob?.company || 'Unknown',
+        position: selectedJob?.title || 'Unknown',
+        appliedDate: new Date().toISOString(),
+        status: 'applied',
+        expected_salary: expectedSalary,
+        availability_date: availabilityDate,
+        cover_letter: coverLetter,
+        additional_info: additionalInfo,
+        resume_storage_path: filePath
+      });
+
+    if (insertError) {
+      // Cleanup file
+      await supabase.storage.from('resumes').remove([filePath]);
+      throw new Error(insertError.message);
+    }
+
+    // 3. Update UI
+    setApplications(prev => [{
+      id: Date.now(),
+      position: selectedJob?.title,
+      company: selectedJob?.company,
+      status: 'Applied',
+      appliedDate: new Date().toISOString(),
+      hasUpdate: false
+    }, ...prev]);
+
+    setStats(prev => ({
+      ...prev,
+      totalApplications: prev.totalApplications + 1
+    }));
+
+    setShowQuickApply(false);
+    setSelectedJob(null);
   };
 
-  const handleUpdateProfile = () => {
-    console.log('Update profile');
-  };
-
-  const handleViewCourses = () => {
-    console.log('View courses');
-  };
-
-  const handleStartLearning = (skillId) => {
-    console.log('Start learning:', skillId);
-  };
-
-  const handleCreateAlert = () => {
-    console.log('Create alert');
-  };
-
-  const handleViewAlert = (alertId) => {
-    console.log('View alert:', alertId);
-  };
-
-  const handleViewAnalytics = () => {
-    console.log('View analytics');
-  };
+  // --- Placeholder Handlers ---
+  const handleViewCalendar = () => { };
+  const handleJoinInterview = () => { };
+  const handleUpdateProfile = () => { };
+  const handleViewCourses = () => { };
+  const handleStartLearning = () => { };
+  const handleCreateAlert = () => { };
+  const handleViewAlert = () => { };
+  const handleViewAnalytics = () => { };
 
   const handleMarkAsRead = (notificationId) => {
-    setNotifications(prev => 
-      prev?.map(notif => 
-        notif?.id === notificationId 
-          ? { ...notif, read: true }
-          : notif
-      )
-    );
+    setNotifications(prev => prev.map(n => n.id === notificationId ? { ...n, read: true } : n));
   };
-
   const handleMarkAllAsRead = () => {
-    setNotifications(prev => 
-      prev?.map(notif => ({ ...notif, read: true }))
-    );
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
 
-  // If user object is null, but isLoading is false, the user is not authenticated or being redirected.
   if (isLoading || !user) {
     return (
       <div className="min-h-screen bg-background">
@@ -416,7 +283,7 @@ const JobSeekerDashboard = () => {
                   Here's what's happening with your job search today.
                 </p>
               </div>
-              
+
               <div className="hidden lg:flex items-center space-x-4">
                 <NotificationIndicator
                   user={user}
@@ -437,31 +304,24 @@ const JobSeekerDashboard = () => {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Left Column - Primary Content */}
             <div className="lg:col-span-8 space-y-6">
-              {/* Job Recommendations */}
               <JobRecommendationCard
-                recommendations={mockRecommendations}
+                recommendations={recommendations}
                 onSearch={handleSearch}
                 onApplyQuick={handleQuickApply}
               />
-
-              {/* Application Status */}
               <ApplicationStatusCard
-                applications={mockApplications}
+                applications={applications}
                 onViewAll={handleViewAllApplications}
               />
-
-              {/* Analytics Chart */}
               <ApplicationMetricsChart
-                applicationData={mockApplications}
-                successRate={12}
-                totalApplications={83}
+                applicationData={applications}
+                successRate={stats.successRate}
+                totalApplications={stats.totalApplications}
                 onViewAnalytics={handleViewAnalytics}
               />
-
-              {/* Job Alerts */}
               <JobAlertsCard
-                alerts={mockJobAlerts}
-                savedSearches={mockSavedSearches}
+                alerts={[]}
+                savedSearches={[]}
                 onCreateAlert={handleCreateAlert}
                 onViewAlert={handleViewAlert}
                 onQuickApply={handleQuickApply}
@@ -470,30 +330,23 @@ const JobSeekerDashboard = () => {
 
             {/* Right Column - Secondary Content */}
             <div className="lg:col-span-4 space-y-6">
-              {/* Profile Completion */}
               <ProfileCompletionCard
-                completionScore={mockProfileData?.completionScore}
-                missingItems={mockProfileData?.missingItems}
-                achievements={mockProfileData?.achievements}
+                completionScore={75}
+                missingItems={[]}
+                achievements={[]}
                 onUpdateProfile={handleUpdateProfile}
               />
-
-              {/* Interview Schedule */}
               <InterviewScheduleCard
-                interviews={mockInterviews}
+                interviews={interviews}
                 onViewCalendar={handleViewCalendar}
                 onJoinInterview={handleJoinInterview}
               />
-
-              {/* Skill Analysis */}
               <SkillAnalysisCard
-                skillGaps={mockSkillGaps}
-                recommendations={mockLearningRecommendations}
+                skillGaps={[]}
+                recommendations={[]}
                 onViewCourses={handleViewCourses}
                 onStartLearning={handleStartLearning}
               />
-
-              {/* Quick Actions Panel */}
               <QuickActionsPanel
                 user={user}
                 onAction={handleQuickAction}
@@ -502,12 +355,22 @@ const JobSeekerDashboard = () => {
           </div>
         </div>
       </main>
-      {/* Mobile Quick Action Menu */}
+
       <QuickActionMenu
         user={user}
         onAction={handleQuickAction}
         variant="floating"
         className="lg:hidden"
+      />
+
+      <QuickApplyModal
+        job={selectedJob}
+        isOpen={showQuickApply}
+        onClose={() => {
+          setShowQuickApply(false);
+          setSelectedJob(null);
+        }}
+        onSubmit={handleApplicationSubmit}
       />
     </div>
   );

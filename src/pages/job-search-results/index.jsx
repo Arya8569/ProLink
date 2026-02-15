@@ -23,163 +23,110 @@ const JobSearchResults = () => {
   const [showQuickApply, setShowQuickApply] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(1);
-  
+
   const [user, setUser] = useState(null); // The authenticated user
 
   useEffect(() => {
     // Read the active user from localStorage for header display and context
     const storedUser = localStorage.getItem('prolink-user');
     if (storedUser) {
-        setUser(JSON.parse(storedUser));
+      setUser(JSON.parse(storedUser));
     }
-  }, []); 
-  
-  // Mock job data (ID changed to UUIDs and data localized to India)
-  const mockJobs = [
-    {
-      // ID changed to valid UUID format
-      id: "a1b2c3d4-0001-4001-8001-000000000001",
-      title: "Senior Frontend Developer (React/TS)",
-      company: {
-        name: "Wipro Technologies",
-        logo: "https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=100&h=100&fit=crop&crop=center",
-        rating: 4.1,
-        reviewCount: 320
-      },
-      location: "Bangalore, KA",
-      isRemote: true,
-      salary: { min: 1800000, max: 2500000 }, // 18-25 LPA
-      jobType: "Full-time",
-      experienceLevel: "Senior",
-      description: `Wipro is looking for a Senior Frontend Developer to join our growing team. You'll be responsible for building modern, responsive web applications using React, TypeScript, and cutting-edge technologies.\n\nThis role offers the opportunity to work on challenging projects that impact clients across the globe.`,
-      skills: ["React", "TypeScript", "JavaScript", "CSS", "Node.js", "AWS", "SQL"],
-      benefits: ["Health Insurance", "PF", "Remote Work", "Flexible Hours"],
-      postedDate: "2025-01-10T10:00:00Z",
-      priority: "featured",
-      aiMatchPercentage: 92,
-      hasApplied: false,
-      isSaved: false
-    },
-    {
-      // ID changed to valid UUID format
-      id: "a1b2c3d4-0002-4002-8002-000000000002",
-      title: "Product Manager (FinTech)",
-      company: {
-        name: "Razorpay",
-        logo: "https://images.unsplash.com/photo-1549923746-c502d488b3ea?w=100&h=100&fit=crop&crop=center",
-        rating: 4.6,
-        reviewCount: 189
-      },
-      location: "Mumbai, MH",
-      isRemote: false,
-      salary: { min: 2000000, max: 3000000 }, // 20-30 LPA
-      jobType: "Full-time",
-      experienceLevel: "Mid",
-      description: `Join our FinTech product team as a Product Manager and help shape the future of our payment platform. You'll work closely with engineering, design, and business teams to deliver exceptional user experiences.\n\nWe're looking for someone with strong analytical skills and a passion for user-centered design.`,
-      skills: ["Product Management", "Analytics", "User Research", "Agile", "SQL"],
-      benefits: ["Health Insurance", "ESOPs", "Learning Budget"],
-      postedDate: "2025-01-09T14:30:00Z",
-      priority: "urgent",
-      aiMatchPercentage: 78,
-      hasApplied: false,
-      isSaved: true
-    },
-    {
-      // ID changed to valid UUID format
-      id: "a1b2c3d4-0003-4003-8003-000000000003",
-      title: "UX/UI Designer",
-      company: {
-        name: "Lollypop Design Studio",
-        logo: "https://images.unsplash.com/photo-1572021335469-31706a17aaef?w=100&h=100&fit=crop&crop=center",
-        rating: 4.7,
-        reviewCount: 203
-      },
-      location: "Remote (India)",
-      isRemote: true,
-      salary: { min: 900000, max: 1500000 }, // 9-15 LPA
-      jobType: "Full-time",
-      experienceLevel: "Mid",
-      description: `We're seeking a talented UX/UI Designer to create beautiful and intuitive user experiences. You'll work on diverse projects ranging from mobile apps to web platforms.\n\nThe ideal candidate has a strong portfolio showcasing user-centered design solutions.`,
-      skills: ["Figma", "Sketch", "User Research", "Prototyping", "Design Systems"],
-      benefits: ["Health Insurance", "Creative Freedom", "Remote Work"],
-      postedDate: "2025-01-08T09:15:00Z",
-      priority: null,
-      aiMatchPercentage: 85,
-      hasApplied: true,
-      isSaved: false
-    },
-    {
-      // ID changed to valid UUID format
-      id: "a1b2c3d4-0004-4004-8004-000000000004",
-      title: "Data Scientist (Gen AI)",
-      company: {
-        name: "TCS iON",
-        logo: "https://images.unsplash.com/photo-1551434678-e076c223a692?w=100&h=100&fit=crop&crop=center",
-        rating: 4.3,
-        reviewCount: 156
-      },
-      location: "Pune, MH",
-      isRemote: false,
-      salary: { min: 1400000, max: 2100000 }, // 14-21 LPA
-      jobType: "Full-time",
-      experienceLevel: "Senior",
-      description: `Join our Data Science team to build machine learning models and extract insights from large datasets. You'll work on cutting-edge AI projects that drive business decisions.\n\nWe're looking for someone with strong statistical background and programming skills.`,
-      skills: ["Python", "Machine Learning", "SQL", "TensorFlow", "Generative AI"],
-      benefits: ["Health Insurance", "PF", "Conference Budget", "Remote Work"],
-      postedDate: "2025-01-07T16:45:00Z",
-      priority: "featured",
-      aiMatchPercentage: 88,
-      hasApplied: false,
-      isSaved: false
-    },
-    {
-      // ID changed to valid UUID format
-      id: "a1b2c3d4-0005-4005-8005-000000000005",
-      title: "DevOps Engineer (Cloud Infra)",
-      company: {
-        name: "HCLTech",
-        logo: "https://images.unsplash.com/photo-1486312338219-ce68e2c6b7d3?w=100&h=100&fit=crop&crop=center",
-        rating: 4.0,
-        reviewCount: 494
-      },
-      location: "Noida, UP",
-      isRemote: false,
-      salary: { min: 1600000, max: 2400000 }, // 16-24 LPA
-      jobType: "Full-time",
-      experienceLevel: "Mid",
-      description: `We're looking for a DevOps Engineer to help us scale our infrastructure and improve our deployment processes. You'll work with modern cloud technologies and automation tools.\n\nThis role offers great opportunities for professional growth and learning.`,
-      skills: ["AWS", "Docker", "Kubernetes", "CI/CD", "Terraform"],
-      benefits: ["Health Insurance", "PF", "Professional Development"],
-      postedDate: "2025-01-06T11:20:00Z",
-      priority: null,
-      aiMatchPercentage: 73,
-      hasApplied: false,
-      isSaved: false
-    }
-  ];
+  }, []);
 
-  useEffect(() => {
-    // Read the active user from localStorage for header display and context
-    const storedUser = localStorage.getItem('prolink-user');
-    if (storedUser) {
-        setUser(JSON.parse(storedUser));
-    }
-  }, []); 
-  
-  // Initialize jobs and apply filters
+  // Fetch Real Jobs from Supabase
   useEffect(() => {
     const loadJobs = async () => {
       setIsLoading(true);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setJobs(mockJobs);
-      setIsLoading(false);
+
+      try {
+        // 1. Fetch Jobs
+        const { data: jobsData, error: jobsError } = await supabase
+          .from('jobs')
+          .select('*')
+          .eq('status', 'active') // Only show active jobs
+          .order('posted_date', { ascending: false });
+
+        if (jobsError) throw jobsError;
+
+        if (!jobsData || jobsData.length === 0) {
+          setJobs([]);
+          setIsLoading(false);
+          return;
+        }
+
+        // 2. Fetch Recruiters (to get Company Name/Logo)
+        const recruiterIds = [...new Set(jobsData.map(j => j.recruiter_id))];
+        const { data: recruitersData, error: recruitersError } = await supabase
+          .from('profiles')
+          .select('id, name, avatar_url, user_role')
+          .in('id', recruiterIds);
+
+        if (recruitersError) throw recruitersError;
+
+        const recruitersMap = (recruitersData || []).reduce((acc, r) => ({ ...acc, [r.id]: r }), {});
+
+        // 3. Map to UI Model
+        const mappedJobs = jobsData.map(job => {
+          const recruiter = recruitersMap[job.recruiter_id] || {};
+
+          return {
+            id: job.id,
+            title: job.title,
+            company: {
+              name: recruiter.name || 'Confidential Company',
+              // Use avatar as logo or a default
+              logo: recruiter.avatar_url || "https://ui-avatars.com/api/?name=" + encodeURIComponent(recruiter.name || 'C') + "&background=random",
+              rating: 4.5, // Mock
+              reviewCount: 12 // Mock
+            },
+            location: job.location || 'Remote',
+            isRemote: job.location?.toLowerCase().includes('remote') || false,
+            salary: {
+              range: job.salary_range || 'Not Disclosed',
+              min: null, max: null // Parsing logic could be added here if needed for filtering
+            },
+            jobType: job.job_type || 'Full-time',
+            experienceLevel: 'Mid-Senior', // This field might need to be added to jobs table or inferred
+            description: job.description,
+            skills: job.requirements || [],
+            benefits: [], // Placeholder
+            postedDate: job.posted_date,
+            priority: null,
+            aiMatchPercentage: Math.floor(Math.random() * 30) + 70, // Mock AI Match
+            hasApplied: false, // We'll check this next
+            isSaved: false
+          };
+        });
+
+        // 4. Check if current user has applied (if logged in)
+        if (user) {
+          const jobIds = jobsData.map(j => j.id);
+          const { data: applications } = await supabase
+            .from('applications')
+            .select('job_id')
+            .eq('user_id', user.id)
+            .in('job_id', jobIds);
+
+          const appliedJobIds = new Set((applications || []).map(a => a.job_id));
+
+          setJobs(mappedJobs.map(j => ({
+            ...j,
+            hasApplied: appliedJobIds.has(j.id)
+          })));
+        } else {
+          setJobs(mappedJobs);
+        }
+
+      } catch (error) {
+        console.error('Error fetching jobs:', error);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     loadJobs();
-  }, []);
+  }, [user]); // Re-run if user logs in to check application status
 
   // Apply filters and search
   useEffect(() => {
@@ -217,7 +164,7 @@ const JobSearchResults = () => {
         const jobMax = job?.salary?.max || 99999999;
         const filterMin = filters?.salaryMin || 0;
         const filterMax = filters?.salaryMax || 99999999;
-        
+
         return jobMax >= filterMin && jobMin <= filterMax;
       });
     }
@@ -285,12 +232,12 @@ const JobSearchResults = () => {
   // --- CRITICAL FIX: Supabase INSERT for Application ---
   const handleApplicationSubmit = async (applicationData) => {
     if (!user || !user.id) {
-        throw new Error('User not authenticated. Please log in before applying.');
+      throw new Error('User not authenticated. Please log in before applying.');
     }
-    
+
     // Resume file check (required by the modal)
     if (!applicationData.resume) {
-        throw new Error('Resume file is required for quick apply.');
+      throw new Error('Resume file is required for quick apply.');
     }
 
     const { jobId, expectedSalary, availabilityDate, coverLetter, additionalInfo } = applicationData;
@@ -301,43 +248,43 @@ const JobSearchResults = () => {
     const resumeFile = applicationData.resume;
     // Create a unique file path using user ID, job ID, and timestamp
     const filePath = `${user.id}/${jobId}-${Date.now()}-${resumeFile.name}`;
-    
+
     const { error: uploadError } = await supabase.storage
-        .from('resumes')
-        .upload(filePath, resumeFile, {
-            cacheControl: '3600',
-            upsert: false
-        });
+      .from('resumes')
+      .upload(filePath, resumeFile, {
+        cacheControl: '3600',
+        upsert: false
+      });
 
     if (uploadError) {
-        console.error('Storage upload failed:', uploadError);
-        throw new Error(`Resume upload failed: ${uploadError.message}`);
+      console.error('Storage upload failed:', uploadError);
+      throw new Error(`Resume upload failed: ${uploadError.message}`);
     }
 
     // 2. Insert application record into the 'applications' table
     const { data, error: insertError } = await supabase
-        .from('applications')
-        .insert({
-            user_id: user.id,
-            job_id: jobId, // This is now a UUID string
-            company: applicationCompany, // Must exist in DB schema
-            position: applicationPosition, // Must exist in DB schema
-            appliedDate: new Date().toISOString(),
-            status: 'applied', // Initial status
-            expected_salary: expectedSalary,
-            availability_date: availabilityDate, // Must exist in DB schema
-            cover_letter: coverLetter,
-            additional_info: additionalInfo, // Must exist in DB schema
-            resume_storage_path: filePath, // Must exist in DB schema
-        })
-        .select()
-        .single();
-    
+      .from('applications')
+      .insert({
+        user_id: user.id,
+        job_id: jobId, // This is now a UUID string
+        company: applicationCompany, // Must exist in DB schema
+        position: applicationPosition, // Must exist in DB schema
+        appliedDate: new Date().toISOString(),
+        status: 'applied', // Initial status
+        expected_salary: expectedSalary,
+        availability_date: availabilityDate, // Must exist in DB schema
+        cover_letter: coverLetter,
+        additional_info: additionalInfo, // Must exist in DB schema
+        resume_storage_path: filePath, // Must exist in DB schema
+      })
+      .select()
+      .single();
+
     if (insertError) {
-        console.error('Supabase Application INSERT failed:', insertError);
-        // Clean up the stored file since the DB insert failed
-        await supabase.storage.from('resumes').remove([filePath]);
-        throw new Error(`Application data storage failed: ${insertError.message}.`);
+      console.error('Supabase Application INSERT failed:', insertError);
+      // Clean up the stored file since the DB insert failed
+      await supabase.storage.from('resumes').remove([filePath]);
+      throw new Error(`Application data storage failed: ${insertError.message}.`);
     }
 
     // 3. Update job card status locally for visual feedback
@@ -346,7 +293,7 @@ const JobSearchResults = () => {
         job?.id === jobId ? { ...job, hasApplied: true } : job
       )
     );
-    
+
     console.log('Application submitted to Supabase successfully:', data);
   };
   // ----------------------------------------------------
