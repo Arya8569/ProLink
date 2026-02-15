@@ -20,8 +20,8 @@ const CandidateDetailsModal = ({ isOpen, onClose, candidate, onScheduleInterview
                             <p className="text-muted-foreground">{candidate.position}</p>
                             <div className="flex items-center gap-2 mt-2">
                                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${candidate.matchScore >= 90 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                                        candidate.matchScore >= 70 ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                                            'bg-red-50 text-red-700 border-red-200'
+                                    candidate.matchScore >= 70 ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                        'bg-red-50 text-red-700 border-red-200'
                                     }`}>
                                     {candidate.matchScore}% Match
                                 </span>
@@ -89,14 +89,22 @@ const CandidateDetailsModal = ({ isOpen, onClose, candidate, onScheduleInterview
                                         <Icon name="FileText" size={20} />
                                     </div>
                                     <div>
-                                        <p className="text-sm font-medium text-foreground">Resume.pdf</p>
+                                        <p className="text-sm font-medium text-foreground">
+                                            {candidate.resumeUrl ? 'Resume.pdf' : 'No Resume Uploaded'}
+                                        </p>
                                         <p className="text-xs text-muted-foreground">Added on {candidate.lastActivity || 'recently'}</p>
                                     </div>
                                 </div>
-                                <Button variant="ghost" size="sm" className="text-primary">
-                                    <Icon name="Download" size={16} className="mr-2" />
-                                    Download
-                                </Button>
+                                {candidate.resumeUrl ? (
+                                    <a href={candidate.resumeUrl} target="_blank" rel="noopener noreferrer">
+                                        <Button variant="ghost" size="sm" className="text-primary">
+                                            <Icon name="Download" size={16} className="mr-2" />
+                                            Download
+                                        </Button>
+                                    </a>
+                                ) : (
+                                    <span className="text-xs text-muted-foreground italic">Unavailable</span>
+                                )}
                             </div>
                         </div>
                     </div>

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 
-const PipelineOverview = ({ pipelineData, onStageChange, onBulkAction }) => {
+const PipelineOverview = ({ pipelineData, onStageChange, onBulkAction, onViewCandidate }) => {
   const [selectedCandidates, setSelectedCandidates] = useState([]);
   const [draggedCandidate, setDraggedCandidate] = useState(null);
 
@@ -120,7 +120,7 @@ const PipelineOverview = ({ pipelineData, onStageChange, onBulkAction }) => {
                         <Icon name="Star" size={12} className="text-accent" />
                       )}
                       <div className={`w-2 h-2 rounded-full ${candidate?.matchScore >= 90 ? 'bg-success' :
-                          candidate?.matchScore >= 70 ? 'bg-warning' : 'bg-error'
+                        candidate?.matchScore >= 70 ? 'bg-warning' : 'bg-error'
                         }`} />
                     </div>
                   </div>
@@ -131,16 +131,28 @@ const PipelineOverview = ({ pipelineData, onStageChange, onBulkAction }) => {
                   <div className="flex items-center justify-between text-xs flex-wrap gap-2">
                     <span className="text-muted-foreground truncate max-w-[120px]" title={candidate?.experience}>{candidate?.experience}</span>
                     <span className={`font-medium shrink-0 ${candidate?.matchScore >= 90 ? 'text-success' :
-                        candidate?.matchScore >= 70 ? 'text-warning' : 'text-error'
+                      candidate?.matchScore >= 70 ? 'text-warning' : 'text-error'
                       }`}>
                       {candidate?.matchScore}% match
                     </span>
                   </div>
 
                   {candidate?.lastActivity && (
-                    <div className="flex items-center space-x-1 mt-2 text-xs text-muted-foreground">
-                      <Icon name="Clock" size={10} />
-                      <span>{candidate?.lastActivity}</span>
+                    <div className="flex items-center space-x-1 mt-2 text-xs text-muted-foreground justify-between w-full">
+                      <div className="flex items-center space-x-1">
+                        <Icon name="Clock" size={10} />
+                        <span>{candidate?.lastActivity}</span>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onViewCandidate(candidate);
+                        }}
+                        className="text-primary hover:text-primary/80 flex items-center space-x-1 px-2 py-1 rounded hover:bg-primary/10 transition-colors"
+                      >
+                        <Icon name="Eye" size={12} />
+                        <span>View</span>
+                      </button>
                     </div>
                   )}
                 </div>

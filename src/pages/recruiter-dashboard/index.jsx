@@ -12,6 +12,7 @@ import AnalyticsPanel from './components/AnalyticsPanel';
 import InterviewScheduler from './components/InterviewScheduler';
 import PostJobModal from './components/PostJobModal';
 import ScheduleInterviewModal from './components/ScheduleInterviewModal';
+import CandidateDetailsModal from './components/CandidateDetailsModal';
 import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
 
@@ -29,6 +30,8 @@ const RecruiterDashboard = () => {
   const [interviews, setInterviews] = useState([]);
   const [isPostJobModalOpen, setIsPostJobModalOpen] = useState(false);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [selectedCandidate, setSelectedCandidate] = useState(null);
 
   useEffect(() => {
     const checkUserAndFetchData = async () => {
@@ -118,7 +121,8 @@ const RecruiterDashboard = () => {
             priority: 'normal',
             user_id: app.user_id,
             job_id: app.job_id,
-            email: profile.email
+            email: profile.email,
+            resumeUrl: app.resume_url
           });
         });
         setPipelineData(processedPipeline);
@@ -194,6 +198,11 @@ const RecruiterDashboard = () => {
     }
   };
 
+  const handleViewCandidate = (candidate) => {
+    setSelectedCandidate(candidate);
+    setIsDetailsModalOpen(true);
+  };
+
   const handlePipelineStageChange = async (applicationId, newStage) => {
     // Optimistic UI Update
     setPipelineData(prev => {
@@ -235,6 +244,71 @@ const RecruiterDashboard = () => {
     { id: 'analytics', label: 'Analytics', icon: 'BarChart3' }
   ];
 
+  // Calculate Stats & Metrics
+  const calculateStats = () => {
+    // Recent Apps (last 7 days) - utilizing 'applied' stage as proxy for now
+    const recentAppsCount = pipelineData.applied?.length || 0;
+
+    return {
+      recentApplications: recentAppsCount,
+      pendingInterviews: interviews.filter(i => i.status !== 'completed' && i.status !== 'cancelled').length,
+      offersSent: pipelineData.offer?.length || 0,
+      unreadMessages: 0
+    };
+  };
+
+  const calculateMetrics = () => {
+    const totalApps = Object.values(pipelineData).flat().length;
+    const totalInterviews = interviews.length;
+    const totalHires = pipelineData.hired?.length || 0;
+    const totalOffers = (pipelineData.offer?.length || 0) + totalHires;
+    const totalScreening = (pipelineData.screening?.length || 0) + (pipelineData.interview?.length || 0) + totalOffers;
+
+    // Simple Funnel based on "passed through" assumption
+    const funnelData = [
+      { stage: 'Applications', count: totalApps, percentage: 100 },
+      { stage: 'Screening', count: totalScreening, percentage: totalApps ? Math.round((totalScreening / totalApps) * 100) : 0 },
+      { stage: 'Interview', count: (pipelineData.interview?.length || 0) + totalOffers, percentage: totalApps ? Math.round(((pipelineData.interview?.length || 0) + totalOffers) / totalApps * 100) : 0 },
+      { stage: 'Offer', count: totalOffers, percentage: totalApps ? Math.round(totalOffers / totalApps * 100) : 0 },
+      { stage: 'Hired', count: totalHires, percentage: totalApps ? Math.round(totalHires / totalApps * 100) : 0 }
+    ];
+
+    return {
+      totalApplications: totalApps,
+      totalInterviews,
+      totalHires,
+      offersSent: pipelineData.offer?.length || 0,
+      funnelData,
+      conversionRates: {
+        interview: totalApps ? Math.round((totalInterviews / totalApps) * 100) + '%' : '0%',
+        offer: totalInterviews ? Math.round((totalOffers / totalInterviews) * 100) + '%' : '0%',
+        acceptance: totalOffers ? Math.round((totalHires / totalOffers) * 100) + '%' : '0%'
+      }
+    };
+  };
+
+  const dashboardStats = calculateStats();
+  const dashboardMetrics = calculateMetrics();
+
+  const getJobStats = (jobId) => {
+    let stats = {
+      totalApplications: 0,
+      shortlisted: 0,
+      interviewed: 0,
+      qualityScore: 85 // Mock score for now
+    };
+
+    Object.entries(pipelineData).forEach(([stage, candidates]) => {
+      const jobCandidates = candidates.filter(c => c.job_id === jobId);
+      stats.totalApplications += jobCandidates.length;
+
+      if (stage === 'screening') stats.shortlisted += jobCandidates.length;
+      if (stage === 'interview') stats.interviewed += jobCandidates.length;
+    });
+
+    return stats;
+  };
+
   if (isLoading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -274,8 +348,8 @@ const RecruiterDashboard = () => {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center space-x-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === tab.id
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted'
                   }`}
               >
                 <Icon name={tab.icon} size={16} />
@@ -309,8 +383,7 @@ const RecruiterDashboard = () => {
                             ...job,
                             postedDate: new Date(job.posted_date).toLocaleDateString(),
                             expiryDate: 'Open',
-                            totalApplications: 0, // Need to compute this from appsData if possible
-                            // For now we don't have aggregated count easily without another map or SQL
+                            ...getJobStats(job.id)
                           }}
                           onViewDetails={() => { }}
                         />
@@ -323,6 +396,7 @@ const RecruiterDashboard = () => {
                     <PipelineOverview
                       pipelineData={pipelineData}
                       onStageChange={handlePipelineStageChange}
+                      onViewCandidate={handleViewCandidate}
                     />
                   </div>
                 </>
@@ -335,7 +409,9 @@ const RecruiterDashboard = () => {
                       key={job.id}
                       job={{
                         ...job,
+                        ...job,
                         postedDate: new Date(job.posted_date).toLocaleDateString(),
+                        ...getJobStats(job.id)
                       }}
                       onViewDetails={() => { }}
                     />
@@ -347,6 +423,7 @@ const RecruiterDashboard = () => {
                 <PipelineOverview
                   pipelineData={pipelineData}
                   onStageChange={handlePipelineStageChange}
+                  onViewCandidate={handleViewCandidate}
                 />
               )}
 
@@ -357,11 +434,17 @@ const RecruiterDashboard = () => {
                 />
               )}
 
+              {activeTab === 'analytics' && (
+                <AnalyticsPanel
+                  metrics={dashboardMetrics}
+                />
+              )}
+
             </div>
 
             {/* Right Sidebar */}
             <div className="lg:col-span-4 space-y-6">
-              <QuickActionsPanel onAction={handleQuickAction} />
+              <QuickActionsPanel onAction={handleQuickAction} stats={dashboardStats} />
               <InterviewScheduler
                 upcomingInterviews={interviews}
                 onScheduleInterview={() => setIsScheduleModalOpen(true)}
@@ -385,6 +468,19 @@ const RecruiterDashboard = () => {
         user={user}
         jobs={jobs}
         candidates={Object.values(pipelineData).flat()}
+      />
+
+      <CandidateDetailsModal
+        isOpen={isDetailsModalOpen}
+        onClose={() => setIsDetailsModalOpen(false)}
+        candidate={selectedCandidate}
+        onScheduleInterview={(candidate) => {
+          // Optional: Pre-fill schedule modal
+          setIsScheduleModalOpen(true);
+        }}
+        onReject={async (candidate) => {
+          await handlePipelineStageChange(candidate.id, 'rejected');
+        }}
       />
     </div>
   );

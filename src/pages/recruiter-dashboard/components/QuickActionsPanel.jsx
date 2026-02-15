@@ -2,7 +2,7 @@ import React from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 
-const QuickActionsPanel = ({ onAction }) => {
+const QuickActionsPanel = ({ onAction, stats }) => {
   const quickActions = [
     {
       id: 'post-job',
@@ -42,28 +42,28 @@ const QuickActionsPanel = ({ onAction }) => {
     {
       id: 'recent-applications',
       title: 'Recent Applications',
-      count: 12,
+      count: stats?.recentApplications || 0,
       icon: 'FileText',
       action: () => onAction('recent-applications')
     },
     {
       id: 'pending-interviews',
       title: 'Pending Interviews',
-      count: 5,
+      count: stats?.pendingInterviews || 0,
       icon: 'Clock',
       action: () => onAction('pending-interviews')
     },
     {
       id: 'offers-sent',
       title: 'Offers Sent',
-      count: 3,
+      count: stats?.offersSent || 0,
       icon: 'Send',
       action: () => onAction('offers-sent')
     },
     {
       id: 'messages',
       title: 'Unread Messages',
-      count: 8,
+      count: stats?.unreadMessages || 0,
       icon: 'MessageSquare',
       action: () => onAction('messages')
     }

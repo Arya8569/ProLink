@@ -49,7 +49,8 @@ const PostJobModal = ({ isOpen, onClose, onJobPosted, user }) => {
                     job_type,
                     description,
                     requirements: requirementsArray,
-                    status: 'active'
+                    status: 'active',
+                    posted_date: new Date().toISOString()
                 })
                 .select()
                 .single();
