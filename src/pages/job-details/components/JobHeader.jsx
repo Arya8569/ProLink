@@ -3,7 +3,7 @@ import Icon from '../../../components/AppIcon';
 import Image from '../../../components/AppImage';
 import Button from '../../../components/ui/Button';
 
-const JobHeader = ({ job, onApply, onSave, isSaved = false, isApplied = false }) => {
+const JobHeader = ({ job, onApply, isApplied = false }) => {
   const formatSalary = (min, max) => {
     if (!min && !max) return 'Salary not disclosed';
     if (min && max) return `$${min?.toLocaleString()} - $${max?.toLocaleString()}`;
@@ -124,28 +124,16 @@ const JobHeader = ({ job, onApply, onSave, isSaved = false, isApplied = false })
             {isApplied ? "Applied" : "Apply Now"}
           </Button>
 
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={onSave}
-              iconName={isSaved ? "BookmarkCheck" : "Bookmark"}
-              iconPosition="left"
-              className="flex-1"
-            >
-              {isSaved ? "Saved" : "Save"}
-            </Button>
-
-            <Button
-              variant="outline"
-              size="lg"
-              iconName="Share2"
-            >
-              <span className="sr-only">Share job</span>
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            size="lg"
+            iconName="Share2"
+          >
+            <span className="sr-only">Share job</span>
+          </Button>
         </div>
       </div>
+
       {/* Skills Tags */}
       {job?.skills && job?.skills?.length > 0 && (
         <div className="mt-6 pt-6 border-t border-border">

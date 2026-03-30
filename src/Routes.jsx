@@ -9,6 +9,7 @@ import JobSeekerDashboard from './pages/job-seeker-dashboard';
 import JobDetailsPage from './pages/job-details';
 import JobSearchResults from './pages/job-search-results';
 import ApplicationTracking from './pages/application-tracking';
+import Profile from './pages/job-seeker-dashboard/Profile';
 
 const Routes = () => {
   return (
@@ -28,6 +29,7 @@ const Routes = () => {
         <Route path="/job-details" element={<JobDetailsPage />} />
         <Route path="/job-search-results" element={<JobSearchResults />} />
         <Route path="/application-tracking" element={<ApplicationTracking />} />
+        <Route path="/profile" element={<Profile />} />
         <Route path="*" element={<NotFound />} />
       </RouterRoutes>
       </ErrorBoundary>

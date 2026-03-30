@@ -37,7 +37,7 @@ const SimilarJobs = ({ jobs, currentJobId }) => {
       <div className="bg-card border border-border rounded-lg p-6 card-moderate">
         <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center space-x-2">
           <Icon name="Briefcase" size={20} className="text-primary" />
-          <span>Similar Jobs</span>
+          <span>More from this Company</span>
         </h3>
         <div className="text-center py-8">
           <Icon name="Search" size={32} className="text-muted-foreground mx-auto mb-3" />
@@ -52,7 +52,7 @@ const SimilarJobs = ({ jobs, currentJobId }) => {
       <div className="p-6 border-b border-border">
         <h3 className="text-lg font-semibold text-foreground flex items-center space-x-2">
           <Icon name="Briefcase" size={20} className="text-primary" />
-          <span>Similar Jobs</span>
+          <span>More from this Company</span>
           <span className="px-2 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium">
             {filteredJobs?.length}
           </span>

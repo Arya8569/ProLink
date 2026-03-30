@@ -48,14 +48,14 @@ const CompanyProfile = ({ company }) => {
           <div className="text-center p-3 bg-muted/50 rounded-lg">
             <div className="flex items-center justify-center space-x-1 text-primary mb-1">
               <Icon name="Star" size={16} className="fill-current" />
-              <span className="text-lg font-bold">{company?.rating}</span>
+              <span className="text-lg font-bold">{company?.rating || '4.5'}</span>
             </div>
             <p className="text-xs text-muted-foreground">Company Rating</p>
           </div>
           <div className="text-center p-3 bg-muted/50 rounded-lg">
             <div className="flex items-center justify-center space-x-1 text-primary mb-1">
               <Icon name="Users" size={16} />
-              <span className="text-lg font-bold">{company?.openJobs}</span>
+              <span className="text-lg font-bold">{company?.openJobs || '0'}</span>
             </div>
             <p className="text-xs text-muted-foreground">Open Positions</p>
           </div>
@@ -66,7 +66,7 @@ const CompanyProfile = ({ company }) => {
           <div className="flex items-center space-x-3">
             <Icon name={getIndustryIcon(company?.industry)} size={18} className="text-muted-foreground" />
             <div>
-              <p className="text-sm font-medium text-foreground">{company?.industry}</p>
+              <p className="text-sm font-medium text-foreground">{company?.industry || 'Technology'}</p>
               <p className="text-xs text-muted-foreground">Industry</p>
             </div>
           </div>
@@ -74,7 +74,7 @@ const CompanyProfile = ({ company }) => {
           <div className="flex items-center space-x-3">
             <Icon name="MapPin" size={18} className="text-muted-foreground" />
             <div>
-              <p className="text-sm font-medium text-foreground">{company?.headquarters}</p>
+              <p className="text-sm font-medium text-foreground">{company?.headquarters || 'Remote'}</p>
               <p className="text-xs text-muted-foreground">Headquarters</p>
             </div>
           </div>
@@ -82,16 +82,8 @@ const CompanyProfile = ({ company }) => {
           <div className="flex items-center space-x-3">
             <Icon name="Building" size={18} className="text-muted-foreground" />
             <div>
-              <p className="text-sm font-medium text-foreground">{formatEmployeeCount(company?.employeeCount)}</p>
+              <p className="text-sm font-medium text-foreground">{company?.size || 'Not specified'}</p>
               <p className="text-xs text-muted-foreground">Company Size</p>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-3">
-            <Icon name="Calendar" size={18} className="text-muted-foreground" />
-            <div>
-              <p className="text-sm font-medium text-foreground">Founded {company?.founded}</p>
-              <p className="text-xs text-muted-foreground">Established</p>
             </div>
           </div>
         </div>
@@ -99,7 +91,7 @@ const CompanyProfile = ({ company }) => {
         {/* Company Description */}
         <div className="mb-6">
           <h4 className="text-sm font-semibold text-foreground mb-2">About Company</h4>
-          <p className="text-sm text-muted-foreground leading-relaxed line-clamp-4">
+          <p className="text-sm text-muted-foreground leading-relaxed">
             {company?.description}
           </p>
         </div>

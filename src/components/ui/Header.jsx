@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import Icon from '../AppIcon';
 import Button from './Button';
 
-const Header = ({ user = null, onLogout = () => {} }) => {
+const Header = ({ user = null, onLogout = () => {}, onProfileClick = null }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const location = useLocation();
@@ -86,17 +86,19 @@ const Header = ({ user = null, onLogout = () => {} }) => {
             <>
               {/* Notifications */}
               {/* Note: NotificationIndicator logic is handled in dashboards, this is a simplified button */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="relative text-primary-foreground hover:bg-white/10"
-                onClick={() => {}}
-              >
-                <Icon name="Bell" size={20} />
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-accent rounded-full flex items-center justify-center">
-                  <span className="text-xs text-accent-foreground font-medium">3</span>
-                </span>
-              </Button>
+              {user.role !== 'jobSeeker' && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="relative text-primary-foreground hover:bg-white/10"
+                  onClick={() => {}}
+                >
+                  <Icon name="Bell" size={20} />
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-accent rounded-full flex items-center justify-center">
+                    <span className="text-xs text-accent-foreground font-medium">3</span>
+                  </span>
+                </Button>
+              )}
 
               {/* Profile Menu */}
               <div className="relative">
@@ -120,22 +122,27 @@ const Header = ({ user = null, onLogout = () => {} }) => {
                       <p className="text-sm font-medium text-foreground">{user?.name}</p>
                       <p className="text-xs text-muted-foreground">{user?.email}</p>
                     </div>
-                    <Link
-                      to="/profile"
-                      className="flex items-center space-x-2 px-4 py-2 text-sm text-foreground hover:bg-muted transition-smooth"
-                      onClick={() => setIsProfileMenuOpen(false)}
-                    >
-                      <Icon name="User" size={16} />
-                      <span>Profile</span>
-                    </Link>
-                    <Link
-                      to="/settings"
-                      className="flex items-center space-x-2 px-4 py-2 text-sm text-foreground hover:bg-muted transition-smooth"
-                      onClick={() => setIsProfileMenuOpen(false)}
-                    >
-                      <Icon name="Settings" size={16} />
-                      <span>Settings</span>
-                    </Link>
+                    {onProfileClick ? (
+                      <button
+                        onClick={() => {
+                          setIsProfileMenuOpen(false);
+                          onProfileClick();
+                        }}
+                        className="flex items-center space-x-2 w-full px-4 py-2 text-left text-sm text-foreground hover:bg-muted transition-smooth"
+                      >
+                        <Icon name="User" size={16} />
+                        <span>Profile</span>
+                      </button>
+                    ) : (
+                      <Link
+                        to="/profile"
+                        className="flex items-center space-x-2 px-4 py-2 text-sm text-foreground hover:bg-muted transition-smooth"
+                        onClick={() => setIsProfileMenuOpen(false)}
+                      >
+                        <Icon name="User" size={16} />
+                        <span>Profile</span>
+                      </Link>
+                    )}
                     <button
                       onClick={handleLogout}
                       className="flex items-center space-x-2 w-full px-4 py-2 text-left text-sm text-foreground hover:bg-muted transition-smooth"

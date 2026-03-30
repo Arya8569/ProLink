@@ -99,9 +99,11 @@ const JobSearchResults = () => {
           };
         });
 
-        // 4. Check if current user has applied (if logged in)
+        // 4. Check if current user has applied or saved (if logged in)
         if (user) {
           const jobIds = jobsData.map(j => j.id);
+          
+          // Check Applications
           const { data: applications } = await supabase
             .from('applications')
             .select('job_id')
@@ -110,9 +112,11 @@ const JobSearchResults = () => {
 
           const appliedJobIds = new Set((applications || []).map(a => a.job_id));
 
+
           setJobs(mappedJobs.map(j => ({
             ...j,
-            hasApplied: appliedJobIds.has(j.id)
+            hasApplied: appliedJobIds.has(j.id),
+            isSaved: false
           })));
         } else {
           setJobs(mappedJobs);
@@ -213,13 +217,6 @@ const JobSearchResults = () => {
     setSearchParams({});
   };
 
-  const handleSaveJob = useCallback((jobId, isSaved) => {
-    setJobs(prevJobs =>
-      prevJobs?.map(job =>
-        job?.id === jobId ? { ...job, isSaved } : job
-      )
-    );
-  }, []);
 
   const handleQuickApply = useCallback((jobId) => {
     const job = jobs?.find(j => j?.id === jobId);
@@ -371,7 +368,6 @@ const JobSearchResults = () => {
                     <JobCard
                       key={job?.id}
                       job={job}
-                      onSave={handleSaveJob}
                       onApply={handleQuickApply}
                     />
                   ))}

@@ -71,10 +71,8 @@ const JobPostingCard = ({ job, onViewDetails, onEditJob, onViewCandidates }) => 
         </div>
       </div>
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <Icon name="Eye" size={16} className="text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">{job?.views} views</span>
-        </div>
+        <div />
+
         <div className="flex items-center space-x-2">
           <Button
             variant="ghost"

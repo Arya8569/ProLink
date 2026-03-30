@@ -18,7 +18,14 @@ const formatIndianCurrency = (amount) => {
   return `₹${amount.toLocaleString('en-IN')}`;
 };
 
-const JobRecommendationCard = ({ recommendations = [], onSearch = () => {}, onApplyQuick = () => {} }) => {
+const JobRecommendationCard = ({ 
+  recommendations = [], 
+  onSearch = () => {}, 
+  onApplyQuick = () => {},
+  onResumeUpload = () => {},
+  isMatching = false,
+  resumeName = null
+}) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilters, setActiveFilters] = useState([]);
 
@@ -53,7 +60,36 @@ const JobRecommendationCard = ({ recommendations = [], onSearch = () => {}, onAp
   return (
     <div className="bg-card border border-border rounded-lg p-6 card-subtle">
       <div className="mb-6">
-        <h3 className="text-lg font-semibold text-foreground mb-4">AI Job Recommendations</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-foreground">AI Job Recommendations</h3>
+          <div className="relative">
+            <input
+              type="file"
+              id="resume-upload"
+              className="hidden"
+              accept=".pdf"
+              onChange={(e) => onResumeUpload(e.target.files[0])}
+              disabled={isMatching}
+            />
+            <label
+              htmlFor="resume-upload"
+              className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs font-medium cursor-pointer transition-smooth border ${
+                isMatching 
+                  ? 'bg-muted text-muted-foreground border-border cursor-not-allowed'
+                  : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/20'
+              }`}
+            >
+              <Icon name={isMatching ? "Loader2" : "Upload"} size={14} className={isMatching ? "animate-spin" : ""} />
+              <span>{isMatching ? 'Matching...' : resumeName ? 'Change Resume' : 'Upload Resume'}</span>
+            </label>
+          </div>
+        </div>
+        {resumeName && !isMatching && (
+          <p className="text-xs text-muted-foreground mb-4 flex items-center">
+            <Icon name="FileText" size={12} className="mr-1" />
+            Matched with: <span className="font-medium ml-1 text-foreground">{resumeName}</span>
+          </p>
+        )}
         
         {/* Search Bar */}
         <form onSubmit={handleSearch} className="mb-4">
@@ -111,13 +147,25 @@ const JobRecommendationCard = ({ recommendations = [], onSearch = () => {}, onAp
                   <p className="text-sm font-medium text-foreground">
                     {formatSalary(job?.salaryMin, job?.salaryMax)}
                   </p>
-                  <div className="flex items-center space-x-1">
-                    <Icon name="Star" size={12} className="text-accent" />
-                    <span className="text-xs text-muted-foreground">{job?.matchScore}% match</span>
-                  </div>
+                  {job?.matchScore && (
+                    <div className="flex items-center justify-end space-x-1">
+                      <div className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
+                        job.matchScore >= 80 ? 'bg-green-500/10 text-green-500' : 
+                        job.matchScore >= 60 ? 'bg-yellow-500/10 text-yellow-500' : 
+                        'bg-muted text-muted-foreground'
+                      }`}>
+                        {job.matchScore}% Match
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
+            {job.matchReason && (
+              <p className="text-xs text-muted-foreground mb-3 italic">
+                "{job.matchReason}"
+              </p>
+            )}
 
             <div className="flex items-center justify-between">
               <div className="flex flex-wrap gap-1">
@@ -129,12 +177,9 @@ const JobRecommendationCard = ({ recommendations = [], onSearch = () => {}, onAp
               </div>
 
               <div className="flex items-center space-x-2">
-                <Button variant="ghost" size="sm">
-                  <Icon name="Bookmark" size={14} />
-                </Button>
                 <Button 
                   variant="outline" 
-                  size="sm"
+                   size="sm"
                   onClick={() => onApplyQuick(job?.id)}
                 >
                   Quick Apply

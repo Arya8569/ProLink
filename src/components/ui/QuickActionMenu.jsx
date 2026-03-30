@@ -34,14 +34,6 @@ const QuickActionMenu = ({
       description: 'Track application status',
       color: 'accent',
       action: () => onAction('view-applications')
-    },
-    {
-      id: 'saved-jobs',
-      label: 'Saved Jobs',
-      icon: 'Bookmark',
-      description: 'Review saved positions',
-      color: 'success',
-      action: () => onAction('saved-jobs')
     }
   ];
 

@@ -137,11 +137,11 @@ const QuickApplyModal = ({
                   accept=".pdf,.doc,.docx"
                   onChange={handleFileChange}
                   className="hidden"
-                  id="resume-upload"
+                  id="quick-apply-resume"
                   required
                 />
                 <label
-                  htmlFor="resume-upload"
+                  htmlFor="quick-apply-resume"
                   className="cursor-pointer flex flex-col items-center space-y-2"
                 >
                   <Icon name="Upload" size={32} className="text-muted-foreground" />

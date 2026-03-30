@@ -11,33 +11,33 @@ const StatusBadge = ({ status, className = "" }) => {
         textColor: 'text-blue-800',
         borderColor: 'border-blue-200'
       },
-      'under-review': {
-        label: 'Under Review',
-        icon: 'Eye',
+      'screening': {
+        label: 'Screening',
+        icon: 'Search',
         bgColor: 'bg-yellow-100',
         textColor: 'text-yellow-800',
         borderColor: 'border-yellow-200'
       },
-      'shortlisted': {
-        label: 'Shortlisted',
-        icon: 'Star',
+      'interview': {
+        label: 'Interview',
+        icon: 'Video',
         bgColor: 'bg-purple-100',
         textColor: 'text-purple-800',
         borderColor: 'border-purple-200'
       },
-      'interview-scheduled': {
-        label: 'Interview Scheduled',
-        icon: 'Calendar',
-        bgColor: 'bg-orange-100',
-        textColor: 'text-orange-800',
-        borderColor: 'border-orange-200'
-      },
-      'offer-received': {
-        label: 'Offer Received',
+      'offer': {
+        label: 'Offer',
         icon: 'Gift',
         bgColor: 'bg-green-100',
         textColor: 'text-green-800',
         borderColor: 'border-green-200'
+      },
+      'hired': {
+        label: 'Hired',
+        icon: 'UserCheck',
+        bgColor: 'bg-emerald-100',
+        textColor: 'text-emerald-800',
+        borderColor: 'border-emerald-200'
       },
       'rejected': {
         label: 'Rejected',

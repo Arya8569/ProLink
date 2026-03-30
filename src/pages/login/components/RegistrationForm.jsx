@@ -11,7 +11,10 @@ const RegistrationForm = ({ onRegister, isLoading, onToggleMode }) => {
     email: '',
     password: '',
     role: 'candidate', // Default role
-    acceptTerms: false
+    acceptTerms: false,
+    companyName: '',
+    companySize: '',
+    companyDescription: ''
   });
   const [errors, setErrors] = useState({});
   const [generalError, setGeneralError] = useState('');
@@ -19,6 +22,15 @@ const RegistrationForm = ({ onRegister, isLoading, onToggleMode }) => {
   const roleOptions = [
     { value: 'candidate', label: 'Job Seeker/Candidate' },
     { value: 'recruiter', label: 'Recruiter' },
+  ];
+
+  const companySizeOptions = [
+    { value: '1-10', label: '1-10 employees' },
+    { value: '11-50', label: '11-50 employees' },
+    { value: '51-200', label: '51-200 employees' },
+    { value: '201-500', label: '201-500 employees' },
+    { value: '501-1000', label: '501-1000 employees' },
+    { value: '1000+', label: '1000+ employees' }
   ];
 
   const handleInputChange = (e) => {
@@ -78,6 +90,12 @@ const RegistrationForm = ({ onRegister, isLoading, onToggleMode }) => {
     if (!formData.acceptTerms) {
         newErrors.acceptTerms = 'You must accept the terms and conditions';
     }
+
+    if (formData.role === 'recruiter') {
+        if (!formData.companyName) newErrors.companyName = 'Company name is required';
+        if (!formData.companySize) newErrors.companySize = 'Company size is required';
+        if (!formData.companyDescription) newErrors.companyDescription = 'Company description is required';
+    }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -97,8 +115,13 @@ const RegistrationForm = ({ onRegister, isLoading, onToggleMode }) => {
             email,
             password,
             options: {
-                // Pass the chosen role in user_metadata
-                data: { user_role: role } 
+                // Pass the chosen role and company info in user_metadata
+                data: { 
+                    user_role: role,
+                    company_name: formData.companyName,
+                    company_size: formData.companySize,
+                    company_description: formData.companyDescription
+                } 
             }
         });
 
@@ -117,7 +140,12 @@ const RegistrationForm = ({ onRegister, isLoading, onToggleMode }) => {
         try {
             await onRegister({ 
                 user: data.user,
-                roleKey: role
+                roleKey: role,
+                companyInfo: role === 'recruiter' ? {
+                    name: formData.companyName,
+                    size: formData.companySize,
+                    description: formData.companyDescription
+                } : null
             });
         } catch (profileError) {
             // CRITICAL: Handle profile creation failure and provide better feedback
@@ -189,6 +217,46 @@ const RegistrationForm = ({ onRegister, isLoading, onToggleMode }) => {
             error={errors.role}
             required
         />
+
+        {formData.role === 'recruiter' && (
+            <div className="space-y-4 p-4 bg-muted/20 rounded-xl border border-border animate-in fade-in slide-in-from-top-2">
+                <Input
+                    label="Company Name"
+                    name="companyName"
+                    placeholder="Enter company name"
+                    value={formData.companyName}
+                    onChange={handleInputChange}
+                    error={errors.companyName}
+                    required
+                />
+                <Select
+                    label="Company Size"
+                    options={companySizeOptions}
+                    value={formData.companySize}
+                    onChange={(val) => setFormData(prev => ({ ...prev, companySize: val }))}
+                    placeholder="Select company size"
+                    error={errors.companySize}
+                    required
+                />
+                <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">Company Description</label>
+                    <textarea
+                        name="companyDescription"
+                        value={formData.companyDescription}
+                        onChange={handleInputChange}
+                        rows={3}
+                        className={`w-full px-3 py-2 border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary text-foreground ${
+                            errors.companyDescription ? 'border-error' : 'border-border'
+                        }`}
+                        placeholder="Tell us about your company..."
+                        required
+                    />
+                    {errors.companyDescription && (
+                        <p className="mt-1 text-xs text-error">{errors.companyDescription}</p>
+                    )}
+                </div>
+            </div>
+        )}
 
         <Checkbox
             label="I accept the Terms of Service and Privacy Policy"

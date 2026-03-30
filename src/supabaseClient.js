@@ -86,7 +86,7 @@ export const fetchUserProfile = async (userId) => {
 /**
  * Creates or updates a profile entry in the 'profiles' table after successful sign-up/in.
  */
-export const createOrUpdateProfile = async (user, roleKey) => {
+export const createOrUpdateProfile = async (user, roleKey, companyInfo = null) => {
     const finalAppRole = mapRoleToAppRole(roleKey);
     const { userName, gender } = createMockUserData(user.email, roleKey);
     
@@ -100,7 +100,10 @@ export const createOrUpdateProfile = async (user, roleKey) => {
             email: user.email,
             name: userName,
             user_role: roleKey,
-            avatar_url: `https://randomuser.me/api/portraits/${gender}/${randomSeed}.jpg`
+            avatar_url: `https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png`,
+            company_name: companyInfo?.name,
+            company_size: companyInfo?.size,
+            company_description: companyInfo?.description
         }, { onConflict: 'id', ignoreDuplicates: false })
         .select()
         .single();

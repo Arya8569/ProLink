@@ -4,69 +4,25 @@ import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
 
+import InterviewDetailsModal from './InterviewDetailsModal';
+
 const InterviewScheduler = ({ 
   applications, 
+  interviews = [],
   onScheduleInterview,
   onJoinInterview,
   className = "" 
 }) => {
-  const [selectedApplication, setSelectedApplication] = useState('');
-  const [interviewType, setInterviewType] = useState('');
-  const [scheduledDate, setScheduledDate] = useState('');
-  const [scheduledTime, setScheduledTime] = useState('');
-  const [notes, setNotes] = useState('');
+  const [selectedDetails, setSelectedDetails] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Get applications that can have interviews scheduled
-  const eligibleApplications = applications?.filter(app => 
-    ['shortlisted', 'interview-scheduled']?.includes(app?.status)
-  );
-
-  // Get upcoming interviews
-  const upcomingInterviews = applications?.filter(app => 
-    app?.status === 'interview-scheduled' && app?.interviewDate
-  )?.map(app => ({
+  // Get upcoming interviews from the new prop
+  const upcomingInterviews = interviews?.map(app => ({
     ...app,
     interviewDate: new Date(app.interviewDate),
     isToday: new Date(app.interviewDate)?.toDateString() === new Date()?.toDateString(),
     isUpcoming: new Date(app.interviewDate) > new Date()
   }))?.sort((a, b) => a?.interviewDate - b?.interviewDate);
-
-  const applicationOptions = eligibleApplications?.map(app => ({
-    value: app?.id,
-    label: `${app?.position} at ${app?.company}`
-  }));
-
-  const interviewTypeOptions = [
-    { value: 'phone', label: 'Phone Interview' },
-    { value: 'video', label: 'Video Interview' },
-    { value: 'in-person', label: 'In-Person Interview' },
-    { value: 'technical', label: 'Technical Interview' },
-    { value: 'panel', label: 'Panel Interview' }
-  ];
-
-  const handleSchedule = (e) => {
-    e?.preventDefault();
-    if (!selectedApplication || !interviewType || !scheduledDate || !scheduledTime) {
-      return;
-    }
-
-    const interviewData = {
-      applicationId: selectedApplication,
-      type: interviewType,
-      date: scheduledDate,
-      time: scheduledTime,
-      notes: notes
-    };
-
-    onScheduleInterview(interviewData);
-    
-    // Reset form
-    setSelectedApplication('');
-    setInterviewType('');
-    setScheduledDate('');
-    setScheduledTime('');
-    setNotes('');
-  };
 
   const formatInterviewDateTime = (date) => {
     return new Date(date)?.toLocaleDateString('en-US', {
@@ -92,7 +48,7 @@ const InterviewScheduler = ({
   return (
     <div className={`space-y-6 ${className}`}>
       {/* Upcoming Interviews */}
-      {upcomingInterviews?.length > 0 && (
+      {upcomingInterviews?.length > 0 ? (
         <div className="bg-card border border-border rounded-lg p-6">
           <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center">
             <Icon name="Calendar" size={20} className="mr-2" />
@@ -139,7 +95,7 @@ const InterviewScheduler = ({
                   {interview?.interviewType === 'video' && interview?.meetingLink && (
                     <Button
                       size="sm"
-                      onClick={() => onJoinInterview(interview?.id)}
+                      onClick={() => interview.meetingLink && window.open(interview.meetingLink, '_blank')}
                       className="bg-success text-success-foreground hover:bg-success/90"
                     >
                       <Icon name="Video" size={14} />
@@ -150,7 +106,10 @@ const InterviewScheduler = ({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => window.open(`/calendar?interview=${interview?.id}`, '_blank')}
+                    onClick={() => {
+                        setSelectedDetails(interview);
+                        setIsModalOpen(true);
+                    }}
                   >
                     <Icon name="ExternalLink" size={14} />
                   </Button>
@@ -159,96 +118,28 @@ const InterviewScheduler = ({
             ))}
           </div>
         </div>
-      )}
-      {/* Schedule New Interview */}
-      {eligibleApplications?.length > 0 && (
-        <div className="bg-card border border-border rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center">
-            <Icon name="Plus" size={20} className="mr-2" />
-            Schedule Interview
-          </h3>
-          
-          <form onSubmit={handleSchedule} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Select
-                label="Application"
-                placeholder="Select application"
-                options={applicationOptions}
-                value={selectedApplication}
-                onChange={setSelectedApplication}
-                required
-              />
-              
-              <Select
-                label="Interview Type"
-                placeholder="Select type"
-                options={interviewTypeOptions}
-                value={interviewType}
-                onChange={setInterviewType}
-                required
-              />
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                label="Date"
-                type="date"
-                value={scheduledDate}
-                onChange={(e) => setScheduledDate(e?.target?.value)}
-                min={new Date()?.toISOString()?.split('T')?.[0]}
-                required
-              />
-              
-              <Input
-                label="Time"
-                type="time"
-                value={scheduledTime}
-                onChange={(e) => setScheduledTime(e?.target?.value)}
-                required
-              />
-            </div>
-            
-            <Input
-              label="Notes (Optional)"
-              type="text"
-              placeholder="Add any additional notes or instructions..."
-              value={notes}
-              onChange={(e) => setNotes(e?.target?.value)}
-            />
-            
-            <div className="flex items-center space-x-4 pt-4">
-              <Button type="submit">
-                <Icon name="Calendar" size={16} />
-                <span className="ml-2">Schedule Interview</span>
-              </Button>
-              
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setSelectedApplication('');
-                  setInterviewType('');
-                  setScheduledDate('');
-                  setScheduledTime('');
-                  setNotes('');
-                }}
-              >
-                Clear Form
-              </Button>
-            </div>
-          </form>
-        </div>
-      )}
-      {/* No Eligible Applications */}
-      {eligibleApplications?.length === 0 && upcomingInterviews?.length === 0 && (
-        <div className="bg-card border border-border rounded-lg p-8 text-center">
-          <Icon name="Calendar" size={48} className="text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-foreground mb-2">No Interviews to Schedule</h3>
-          <p className="text-muted-foreground">
-            You don't have any applications that are ready for interview scheduling.
+      ) : (
+        <div className="bg-card border border-border rounded-lg p-12 text-center">
+          <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+            <Icon name="Calendar" size={32} className="text-muted-foreground" />
+          </div>
+          <h3 className="text-xl font-semibold text-foreground mb-2">No Upcoming Interviews</h3>
+          <p className="text-muted-foreground max-w-sm mx-auto">
+            You don't have any interviews scheduled at the moment. When a recruiter schedules one, it will appear here.
           </p>
+          <div className="mt-6 flex justify-center">
+            <Button variant="outline" onClick={() => window.location.href='/dashboard'}>
+              Back to Dashboard
+            </Button>
+          </div>
         </div>
       )}
+
+      <InterviewDetailsModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        interview={selectedDetails} 
+      />
     </div>
   );
 };

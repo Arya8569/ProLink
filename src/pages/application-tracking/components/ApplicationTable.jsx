@@ -8,7 +8,6 @@ const ApplicationTable = ({
   applications,
   onViewDetails,
   onScheduleFollowup,
-  onViewCommunication,
   sortBy,
   onSortChange,
   className = ""
@@ -184,13 +183,6 @@ const ApplicationTable = ({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => onViewCommunication(application?.id)}
-                    >
-                      <Icon name="MessageSquare" size={14} />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
                       onClick={() => onScheduleFollowup(application?.id)}
                     >
                       <Icon name="Calendar" size={14} />
@@ -210,7 +202,6 @@ const ApplicationTable = ({
             application={application}
             onViewDetails={onViewDetails}
             onScheduleFollowup={onScheduleFollowup}
-            onViewCommunication={onViewCommunication}
           />
         ))}
       </div>

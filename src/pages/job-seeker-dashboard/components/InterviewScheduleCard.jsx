@@ -60,14 +60,14 @@ const InterviewScheduleCard = ({ interviews = [], onViewCalendar = () => {}, onJ
   return (
     <div className="bg-card border border-border rounded-lg p-6 card-subtle">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-foreground">Upcoming Interviews</h3>
+        <h3 className="text-lg font-semibold text-foreground">Scheduled Interviews</h3>
         <Button variant="ghost" size="sm" onClick={onViewCalendar}>
           <Icon name="Calendar" size={16} />
           <span className="ml-1">Calendar</span>
         </Button>
       </div>
       <div className="space-y-4">
-        {upcomingInterviews?.slice(0, 3)?.map((interview) => (
+        {interviews?.slice(0, 5)?.map((interview) => (
           <div key={interview?.id} className={`p-4 rounded-lg border transition-smooth ${
             isToday(interview?.scheduledAt) 
               ? 'bg-accent/5 border-accent/20' :'bg-muted/30 border-border hover:bg-muted/50'
@@ -136,17 +136,17 @@ const InterviewScheduleCard = ({ interviews = [], onViewCalendar = () => {}, onJ
           </div>
         ))}
       </div>
-      {upcomingInterviews?.length === 0 && (
+      {interviews?.length === 0 && (
         <div className="text-center py-8">
           <Icon name="Calendar" size={32} className="text-muted-foreground mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">No upcoming interviews</p>
-          <p className="text-xs text-muted-foreground">Your scheduled interviews will appear here</p>
+          <p className="text-sm text-muted-foreground">No scheduled interviews</p>
+          <p className="text-xs text-muted-foreground">When you have interviews scheduled, they will appear here</p>
         </div>
       )}
-      {upcomingInterviews?.length > 3 && (
+      {interviews?.length > 5 && (
         <div className="mt-4 pt-4 border-t border-border">
           <Button variant="ghost" size="sm" className="w-full" onClick={onViewCalendar}>
-            View {upcomingInterviews?.length - 3} more interviews
+            View {interviews?.length - 5} more interviews
             <Icon name="ArrowRight" size={14} className="ml-1" />
           </Button>
         </div>

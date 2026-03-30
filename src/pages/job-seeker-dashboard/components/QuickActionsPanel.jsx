@@ -17,28 +17,12 @@ const QuickActionsPanel = ({
       shortcut: '⌘K'
     },
     {
-      id: 'update-resume',
-      title: 'Update Resume',
-      description: 'Keep your resume current',
-      icon: 'FileText',
-      color: 'secondary',
-      shortcut: '⌘R'
-    },
-    {
       id: 'view-applications',
       title: 'My Applications',
       description: 'Track application status',
       icon: 'Briefcase',
       color: 'accent',
       shortcut: '⌘A'
-    },
-    {
-      id: 'profile-settings',
-      title: 'Profile Settings',
-      description: 'Manage your profile',
-      icon: 'Settings',
-      color: 'success',
-      shortcut: '⌘P'
     }
   ];
 
@@ -85,41 +69,6 @@ const QuickActionsPanel = ({
             <p className="text-xs opacity-80">{action?.description}</p>
           </button>
         ))}
-      </div>
-      {/* Additional Actions */}
-      <div className="mt-4 pt-4 border-t border-border">
-        <div className="grid grid-cols-2 gap-2">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="justify-start"
-            onClick={() => handleAction('job-alerts')}
-          >
-            <Icon name="Bell" size={14} />
-            <span className="ml-2">Job Alerts</span>
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="justify-start"
-            onClick={() => handleAction('saved-jobs')}
-          >
-            <Icon name="Bookmark" size={14} />
-            <span className="ml-2">Saved Jobs</span>
-          </Button>
-        </div>
-      </div>
-      {/* Pro Tip */}
-      <div className="mt-4 p-3 bg-muted/30 rounded-lg">
-        <div className="flex items-start space-x-2">
-          <Icon name="Lightbulb" size={16} className="text-accent mt-0.5" />
-          <div>
-            <p className="text-xs font-medium text-foreground">Pro Tip</p>
-            <p className="text-xs text-muted-foreground">
-              Use keyboard shortcuts to navigate quickly. Press ⌘K to search jobs instantly.
-            </p>
-          </div>
-        </div>
       </div>
     </div>
   );

@@ -7,12 +7,16 @@ const ApplicationStatusCard = ({ applications = [], onViewAll = () => {} }) => {
     switch (status?.toLowerCase()) {
       case 'applied':
         return 'text-primary bg-primary/10 border-primary/20';
+      case 'screening':
+        return 'text-yellow-600 bg-yellow-50 border-yellow-200';
       case 'shortlisted':
         return 'text-accent bg-accent/10 border-accent/20';
       case 'interview':
         return 'text-secondary bg-secondary/10 border-secondary/20';
       case 'offer':
         return 'text-success bg-success/10 border-success/20';
+      case 'hired':
+        return 'text-emerald-600 bg-emerald-50 border-emerald-200';
       case 'rejected':
         return 'text-error bg-error/10 border-error/20';
       default:
@@ -24,12 +28,16 @@ const ApplicationStatusCard = ({ applications = [], onViewAll = () => {} }) => {
     switch (status?.toLowerCase()) {
       case 'applied':
         return 'FileText';
+      case 'screening':
+        return 'Search';
       case 'shortlisted':
         return 'Star';
       case 'interview':
         return 'Calendar';
       case 'offer':
         return 'Gift';
+      case 'hired':
+        return 'UserCheck';
       case 'rejected':
         return 'X';
       default:

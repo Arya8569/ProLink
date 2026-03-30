@@ -43,6 +43,7 @@
     "dotenv": "^16.0.1",
     "framer-motion": "^10.16.4",
     "lucide-react": "^0.484.0",
+    "pdfjs-dist": "^5.5.207",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-helmet": "^6.1.0",

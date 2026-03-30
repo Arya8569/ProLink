@@ -7,7 +7,6 @@ const ApplicationCard = ({
   application,
   onViewDetails,
   onScheduleFollowup,
-  onViewCommunication,
   className = ""
 }) => {
   const formatDate = (dateString) => {
@@ -73,13 +72,6 @@ const ApplicationCard = ({
         >
           <Icon name="Eye" size={14} />
           <span className="ml-1">Details</span>
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onViewCommunication(application?.id)}
-        >
-          <Icon name="MessageSquare" size={14} />
         </Button>
         <Button
           variant="ghost"

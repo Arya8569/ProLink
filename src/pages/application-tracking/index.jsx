@@ -19,6 +19,7 @@ const ApplicationTracking = () => {
   const [filteredApplications, setFilteredApplications] = useState([]);
   const [user, setUser] = useState(null); 
   const [applications, setApplications] = useState([]);
+  const [interviews, setInterviews] = useState([]);
   const [documents, setDocuments] = useState([]);
   const [notifications, setNotifications] = useState([]); 
 
@@ -51,22 +52,64 @@ const ApplicationTracking = () => {
   ];
 
   // --- SUPABASE DATA FETCHING ---
-  const fetchApplicationData = useCallback(async (userId) => {
+  const fetchApplicationData = useCallback(async (userId, role) => {
     if (!userId) return;
 
-    // NOTE: In a real app, you would join with a 'jobs' table to get position/company data.
-    // Assuming 'applications' table has 'position' and 'company' fields for simplicity.
-    let { data: fetchedApplications, error: appError } = await supabase
-      .from('applications')
-      .select('*')
-      .eq('user_id', userId)
-      .order('appliedDate', { ascending: false });
+    try {
+      let query = supabase.from('applications').select('*');
 
-    if (appError) {
-      console.error('Error fetching applications:', appError);
-      return;
+      if (role === 'recruiter' || role === 'admin') {
+        // 1. Fetch Job IDs for this recruiter
+        const { data: jobData, error: jobError } = await supabase
+          .from('jobs')
+          .select('id')
+          .eq('recruiter_id', userId);
+
+        if (jobError) throw jobError;
+
+        if (jobData && jobData.length > 0) {
+          const jobIds = jobData.map(j => j.id);
+          // 2. Fetch Applications for those jobs
+          query = query.in('job_id', jobIds);
+        } else {
+          setApplications([]);
+          return;
+        }
+      } else {
+        // Standard job seeker: Fetch applications they sent
+        query = query.eq('user_id', userId);
+      }
+
+      const { data: fetchedApplications, error: appError } = await query
+        .order('appliedDate', { ascending: false });
+
+      if (appError) throw appError;
+
+      // For recruiters, we need to mock/join company/position data if not in table
+      // The RecruiterDashboard logic is more complete, let's try to match it or at least ensure position name exists
+      // Assuming positions might be missing if not joined, we'll fetch them if needed
+      if ((role === 'recruiter' || role === 'admin') && fetchedApplications && fetchedApplications.length > 0) {
+          const jobIds = [...new Set(fetchedApplications.map(a => a.job_id))];
+          const { data: jobsData } = await supabase.from('jobs').select('id, title, company_name').in('id', jobIds);
+          const jobsMap = (jobsData || []).reduce((acc, j) => ({...acc, [j.id]: j}), {});
+          
+          const userIds = [...new Set(fetchedApplications.map(a => a.user_id))];
+          const { data: profilesData } = await supabase.from('profiles').select('id, name').in('id', userIds);
+          const profilesMap = (profilesData || []).reduce((acc, p) => ({...acc, [p.id]: p}), {});
+
+          const enriched = fetchedApplications.map(app => ({
+              ...app,
+              position: jobsMap[app.job_id]?.title || 'Unknown Position',
+              company: jobsMap[app.job_id]?.company_name || 'Your Company',
+              candidate_name: profilesMap[app.user_id]?.name || 'Unknown Candidate'
+          }));
+          setApplications(enriched);
+      } else {
+          setApplications(fetchedApplications || []);
+      }
+    } catch (error) {
+      console.error('Error fetching applications:', error);
     }
-    setApplications(fetchedApplications || []);
   }, []);
 
   const fetchDocumentData = useCallback(async (userId) => {
@@ -76,7 +119,7 @@ const ApplicationTracking = () => {
       .from('documents')
       .select('*')
       .eq('user_id', userId)
-      .order('uploadDate', { ascending: false });
+      .order('upload_date', { ascending: false }); // Corrected column name
 
     if (docError) {
       console.error('Error fetching documents metadata:', docError);
@@ -112,6 +155,47 @@ const ApplicationTracking = () => {
 
     setDocuments(documentsWithUrls || []);
   }, []);
+
+  const fetchInterviewData = useCallback(async (userId, role) => {
+    if (!userId) return;
+
+    try {
+      let query = supabase.from('interviews').select('*');
+      
+      if (role === 'recruiter' || role === 'admin') {
+        query = query.eq('recruiter_id', userId);
+      } else {
+        query = query.eq('candidate_id', userId);
+      }
+
+      const { data: interviewsData, error } = await query.order('date_time', { ascending: true });
+
+      if (error) throw error;
+
+      // Extract unique recruiter/candidate IDs to fetch names
+      const recruiterIds = [...new Set(interviewsData.map(i => i.recruiter_id))];
+      const jobIds = [...new Set(interviewsData.map(i => i.job_id))];
+      
+      const { data: recruiters } = await supabase.from('profiles').select('id, name').in('id', recruiterIds);
+      const { data: jobs } = await supabase.from('jobs').select('id, title').in('id', jobIds);
+      
+      const recruiterMap = (recruiters || []).reduce((acc, r) => ({ ...acc, [r.id]: r }), {});
+      const jobMap = (jobs || []).reduce((acc, j) => ({ ...acc, [j.id]: j }), {});
+
+      const enrichedInterviews = interviewsData.map(int => ({
+        ...int,
+        company: recruiterMap[int.recruiter_id]?.name || 'Recruiter',
+        position: jobMap[int.job_id]?.title || 'Scheduled Interview',
+        interviewDate: int.date_time, // Standardize for component
+        interviewType: int.type,
+        meetingLink: int.meeting_link
+      }));
+
+      setInterviews(enrichedInterviews);
+    } catch (err) {
+      console.error('Error fetching interviews:', err);
+    }
+  }, []);
   // --- END ROBUST URL GENERATION FIX ---
 
   useEffect(() => {
@@ -119,11 +203,35 @@ const ApplicationTracking = () => {
     if (storedUser) {
         const currentUser = JSON.parse(storedUser);
         setUser(currentUser);
-        fetchApplicationData(currentUser.id);
+        fetchApplicationData(currentUser.id, currentUser.role);
         fetchDocumentData(currentUser.id);
+        fetchInterviewData(currentUser.id, currentUser.role);
     }
     setNotifications(mockNotifications);
-  }, [fetchApplicationData, fetchDocumentData]);
+  }, [fetchApplicationData, fetchDocumentData, fetchInterviewData]);
+
+  // Real-time Subscriptions
+  useEffect(() => {
+    if (!user || !user.id) return;
+
+    const channel = supabase
+      .channel('tracking-updates')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'applications' 
+      }, () => fetchApplicationData(user.id, user.role))
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'interviews' 
+      }, () => fetchInterviewData(user.id, user.role))
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, fetchApplicationData, fetchInterviewData]);
 
   // --- SUPABASE CRUD HANDLERS ---
   const handleScheduleInterview = async (interviewData) => {
@@ -144,7 +252,7 @@ const ApplicationTracking = () => {
       console.error('Error scheduling interview:', error);
     } else {
       console.log('Interview scheduled and status updated in DB');
-      fetchApplicationData(user.id);
+      fetchApplicationData(user.id, user.role);
     }
   };
   
@@ -255,10 +363,6 @@ const ApplicationTracking = () => {
     navigate(`/job-details?application=${applicationId}`);
   };
 
-  const handleViewCommunication = (applicationId) => {
-    // Mock communication view
-    console.log('View communication for application:', applicationId);
-  };
 
   const handleJoinInterview = (applicationId) => {
     const application = applications?.find(app => app?.id === applicationId);
@@ -282,7 +386,7 @@ const ApplicationTracking = () => {
   const tabs = [
     { id: 'applications', label: 'Applications', icon: 'FileText', count: applications?.length },
     { id: 'analytics', label: 'Analytics', icon: 'BarChart3' },
-    { id: 'interviews', label: 'Interviews', icon: 'Calendar', count: applications?.filter(app => app?.status === 'interview-scheduled')?.length },
+    { id: 'interviews', label: 'Interviews', icon: 'Calendar', count: interviews?.length },
     { id: 'documents', label: 'Documents', icon: 'FolderOpen', count: documents?.length }
   ];
 
@@ -344,7 +448,6 @@ const ApplicationTracking = () => {
                   applications={filteredApplications}
                   onViewDetails={handleViewDetails}
                   onScheduleFollowup={handleScheduleFollowup}
-                  onViewCommunication={handleViewCommunication}
                   sortBy={sortBy}
                   onSortChange={handleSortChange}
                 />
@@ -358,6 +461,7 @@ const ApplicationTracking = () => {
             {activeTab === 'interviews' && (
               <InterviewScheduler
                 applications={applications}
+                interviews={interviews}
                 onScheduleInterview={handleScheduleInterview}
                 onJoinInterview={handleJoinInterview}
               />

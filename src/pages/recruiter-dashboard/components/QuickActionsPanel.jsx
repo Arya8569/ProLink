@@ -27,14 +27,6 @@ const QuickActionsPanel = ({ onAction, stats }) => {
       icon: 'Calendar',
       color: 'bg-accent text-accent-foreground hover:bg-accent/90',
       action: () => onAction('schedule-interview')
-    },
-    {
-      id: 'team-collaboration',
-      title: 'Team Collaboration',
-      description: 'Manage team access',
-      icon: 'Users',
-      color: 'bg-success text-success-foreground hover:bg-success/90',
-      action: () => onAction('team-collaboration')
     }
   ];
 
@@ -59,13 +51,6 @@ const QuickActionsPanel = ({ onAction, stats }) => {
       count: stats?.offersSent || 0,
       icon: 'Send',
       action: () => onAction('offers-sent')
-    },
-    {
-      id: 'messages',
-      title: 'Unread Messages',
-      count: stats?.unreadMessages || 0,
-      icon: 'MessageSquare',
-      action: () => onAction('messages')
     }
   ];
 
@@ -118,44 +103,6 @@ const QuickActionsPanel = ({ onAction, stats }) => {
               </div>
             </div>
           ))}
-        </div>
-      </div>
-      {/* Tools & Resources */}
-      <div className="bg-card border border-border rounded-lg p-6">
-        <h2 className="text-xl font-semibold text-foreground mb-4">Tools & Resources</h2>
-        <div className="space-y-3">
-          <Button
-            variant="ghost"
-            className="w-full justify-start"
-            onClick={() => onAction('interview-templates')}
-          >
-            <Icon name="FileTemplate" size={16} />
-            <span className="ml-2">Interview Templates</span>
-          </Button>
-          <Button
-            variant="ghost"
-            className="w-full justify-start"
-            onClick={() => onAction('email-templates')}
-          >
-            <Icon name="Mail" size={16} />
-            <span className="ml-2">Email Templates</span>
-          </Button>
-          <Button
-            variant="ghost"
-            className="w-full justify-start"
-            onClick={() => onAction('reports')}
-          >
-            <Icon name="BarChart3" size={16} />
-            <span className="ml-2">Hiring Reports</span>
-          </Button>
-          <Button
-            variant="ghost"
-            className="w-full justify-start"
-            onClick={() => onAction('settings')}
-          >
-            <Icon name="Settings" size={16} />
-            <span className="ml-2">Account Settings</span>
-          </Button>
         </div>
       </div>
     </div>

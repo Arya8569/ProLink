@@ -13,14 +13,18 @@ import InterviewScheduler from './components/InterviewScheduler';
 import PostJobModal from './components/PostJobModal';
 import ScheduleInterviewModal from './components/ScheduleInterviewModal';
 import CandidateDetailsModal from './components/CandidateDetailsModal';
+import RecruiterProfileModal from './components/RecruiterProfileModal';
+import CVScreening from './components/CVScreening';
 import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
+import StatusBadge from '../application-tracking/components/StatusBadge';
 
 const RecruiterDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedJobId, setSelectedJobId] = useState(null);
 
   // Real Data State
   const [jobs, setJobs] = useState([]);
@@ -32,6 +36,8 @@ const RecruiterDashboard = () => {
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState(null);
+  const [selectedInterview, setSelectedInterview] = useState(null);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   useEffect(() => {
     const checkUserAndFetchData = async () => {
@@ -47,7 +53,25 @@ const RecruiterDashboard = () => {
         return;
       }
 
-      setUser(currentUser);
+      // Verify Supabase Session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || session.user.id !== currentUser.id) {
+        console.warn("Session mismatch or expired. Logging out.");
+        await supabase.auth.signOut();
+        localStorage.removeItem('prolink-user');
+        navigate('/login', { replace: true });
+        return;
+      }
+
+      // Fetch Full Profile for Company Details
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', currentUser.id)
+        .single();
+      
+      const fullUser = { ...currentUser, ...profileData };
+      setUser(fullUser);
 
       try {
         // 1. Fetch Jobs
@@ -110,11 +134,12 @@ const RecruiterDashboard = () => {
           // Default to 'applied' if status is invalid or missing
           const stage = (app.status && processedPipeline[app.status]) ? app.status : 'applied';
 
-          processedPipeline[stage].push({
+          const processedApp = {
             id: app.id,
             name: profile.name || 'Unknown Candidate',
             position: job.title || 'Unknown Role',
-            stage: stage,
+            stage: stage, // This is the processed stage for the pipeline
+            rawStatus: app.status, // Keep raw status for mapping components
             matchScore: 85, // Mock score
             experience: app.additional_info || 'See Resume',
             lastActivity: new Date(app.created_at).toLocaleDateString(),
@@ -122,8 +147,12 @@ const RecruiterDashboard = () => {
             user_id: app.user_id,
             job_id: app.job_id,
             email: profile.email,
-            resumeUrl: app.resume_url
-          });
+            resumeUrl: app.resume_storage_path
+              ? supabase.storage.from('resumes').getPublicUrl(app.resume_storage_path).data.publicUrl
+              : app.resume_url, // Fallback
+            rawDate: app.created_at
+          };
+          processedPipeline[stage].push(processedApp);
         });
         setPipelineData(processedPipeline);
 
@@ -161,17 +190,72 @@ const RecruiterDashboard = () => {
   };
 
   const handleInterviewScheduled = (newInterview) => {
-    // Re-fetch is safer, but let's append for now if we have candidate info
-    // Since we don't have the candidate name immediately without fetching profile, 
-    // let's just trigger a re-fetch logic or simple reload. 
-    // For now, simple reload of page or re-running data fetch would be ideal.
-    // We'll append with a placeholder name to update UI immediately
-    setInterviews(prev => [...prev, {
-      ...newInterview,
-      dateTime: newInterview.date_time,
-      candidate: { name: 'New Candidate' }, // Placeholder
-      position: 'Scheduled Interview'
-    }]);
+    // 1. Move candidate in pipelineData (Optimistic Update)
+    setPipelineData(prev => {
+      const newData = { ...prev };
+      let movedCandidate = null;
+
+      // Search for the candidate across all stages
+      Object.keys(newData).forEach(stage => {
+        const idx = newData[stage].findIndex(c =>
+          c.user_id === newInterview.candidate_id && c.job_id === newInterview.job_id
+        );
+        if (idx !== -1) {
+          movedCandidate = newData[stage][idx];
+          newData[stage].splice(idx, 1);
+        }
+      });
+
+      if (movedCandidate) {
+        if (!newData.interview) newData.interview = [];
+        newData.interview.push({
+          ...movedCandidate,
+          stage: 'interview',
+          rawStatus: 'interview'
+        });
+      }
+      return newData;
+    });
+
+    // 2. Update interviews list
+    setInterviews(prev => {
+      const exists = prev.find(i => i.id === newInterview.id);
+      if (exists) {
+        return prev.map(i => i.id === newInterview.id ? { ...i, ...newInterview, dateTime: newInterview.date_time } : i);
+      }
+      return [{
+        ...newInterview,
+        dateTime: newInterview.date_time,
+        candidate: { name: 'Interview Scheduled' }, // Placeholder, will be refreshed
+        position: 'Technical Interview'
+      }, ...prev];
+    });
+  };
+
+  const handleRescheduleInterview = (interviewId) => {
+    const interview = interviews.find(i => i.id === interviewId);
+    if (interview) {
+      setSelectedInterview(interview);
+      setIsScheduleModalOpen(true);
+    }
+  };
+
+  const handleCancelInterview = async (interviewId) => {
+    if (!window.confirm('Are you sure you want to cancel this interview?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('interviews')
+        .delete()
+        .eq('id', interviewId);
+
+      if (error) throw error;
+
+      setInterviews(prev => prev.filter(i => i.id !== interviewId));
+    } catch (err) {
+      console.error('Error cancelling interview:', err);
+      alert('Failed to cancel interview');
+    }
   };
 
   const handleQuickAction = (action) => {
@@ -201,6 +285,11 @@ const RecruiterDashboard = () => {
   const handleViewCandidate = (candidate) => {
     setSelectedCandidate(candidate);
     setIsDetailsModalOpen(true);
+  };
+
+  const handleViewCandidates = (jobId) => {
+    setSelectedJobId(jobId);
+    setActiveTab('applications');
   };
 
   const handlePipelineStageChange = async (applicationId, newStage) => {
@@ -240,8 +329,9 @@ const RecruiterDashboard = () => {
     { id: 'overview', label: 'Overview', icon: 'LayoutDashboard' },
     { id: 'jobs', label: 'Job Postings', icon: 'Briefcase' },
     { id: 'pipeline', label: 'Pipeline', icon: 'Users' },
-    { id: 'interviews', label: 'Interviews', icon: 'Calendar' },
-    { id: 'analytics', label: 'Analytics', icon: 'BarChart3' }
+    { id: 'applications', label: 'Applications', icon: 'FileText' }, // New tab
+    { id: 'cv-screening', label: 'CV Screening', icon: 'ScanLine' },
+    { id: 'interviews', label: 'Interviews', icon: 'Calendar' }
   ];
 
   // Calculate Stats & Metrics
@@ -309,6 +399,14 @@ const RecruiterDashboard = () => {
     return stats;
   };
 
+  const getAllCandidatesList = () => {
+    const list = Object.values(pipelineData).flat().sort((a, b) => new Date(b.rawDate) - new Date(a.rawDate));
+    if (selectedJobId) {
+      return list.filter(c => c.job_id === selectedJobId);
+    }
+    return list;
+  };
+
   if (isLoading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -320,7 +418,11 @@ const RecruiterDashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header user={user} onLogout={handleLogout} />
+      <Header 
+        user={user} 
+        onLogout={handleLogout} 
+        onProfileClick={() => setIsProfileModalOpen(true)}
+      />
       <main className="pt-16">
         <div className="max-w-7xl mx-auto px-4 lg:px-6 py-8">
 
@@ -385,6 +487,7 @@ const RecruiterDashboard = () => {
                             expiryDate: 'Open',
                             ...getJobStats(job.id)
                           }}
+                          onViewCandidates={handleViewCandidates}
                           onViewDetails={() => { }}
                         />
                       ))
@@ -413,6 +516,7 @@ const RecruiterDashboard = () => {
                         postedDate: new Date(job.posted_date).toLocaleDateString(),
                         ...getJobStats(job.id)
                       }}
+                      onViewCandidates={handleViewCandidates}
                       onViewDetails={() => { }}
                     />
                   ))}
@@ -427,16 +531,76 @@ const RecruiterDashboard = () => {
                 />
               )}
 
+              {activeTab === 'applications' && (
+                <div className="bg-card border border-border rounded-lg overflow-hidden">
+                  <div className="p-4 border-b border-border bg-muted/30 flex items-center justify-between">
+                    <h3 className="font-semibold text-foreground text-lg">
+                      {selectedJobId 
+                        ? `Candidates for ${jobs.find(j => j.id === selectedJobId)?.title || 'Job'}` 
+                        : 'All Candidate Applications'}
+                    </h3>
+                    {selectedJobId && (
+                      <Button variant="outline" size="sm" onClick={() => setSelectedJobId(null)}>
+                        Clear Filter
+                      </Button>
+                    )}
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-muted/10">
+                          <th className="p-4 font-medium text-sm text-muted-foreground border-b border-border">Candidate</th>
+                          <th className="p-4 font-medium text-sm text-muted-foreground border-b border-border">Position</th>
+                          <th className="p-4 font-medium text-sm text-muted-foreground border-b border-border">Status</th>
+                          <th className="p-4 font-medium text-sm text-muted-foreground border-b border-border">Applied Date</th>
+                          <th className="p-4 font-medium text-sm text-muted-foreground border-b border-border text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {getAllCandidatesList().map(candidate => (
+                          <tr key={candidate.id} className="hover:bg-muted/5 transition-colors border-b border-border last:border-0">
+                            <td className="p-4">
+                              <div className="flex items-center space-x-3">
+                                <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-bold">
+                                  {candidate.name.charAt(0)}
+                                </div>
+                                <span className="font-medium text-foreground">{candidate.name}</span>
+                              </div>
+                            </td>
+                            <td className="p-4 text-sm text-muted-foreground">{candidate.position}</td>
+                            <td className="p-4">
+                              <StatusBadge status={candidate.stage} />
+                            </td>
+                            <td className="p-4 text-sm text-muted-foreground">{candidate.lastActivity}</td>
+                            <td className="p-4 text-right">
+                              <Button variant="ghost" size="sm" onClick={() => handleViewCandidate(candidate)}>
+                                <Icon name="Eye" size={14} />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
               {activeTab === 'interviews' && (
                 <InterviewScheduler
                   upcomingInterviews={interviews}
-                  onScheduleInterview={() => setIsScheduleModalOpen(true)}
+                  onScheduleInterview={() => {
+                    setSelectedInterview(null);
+                    setIsScheduleModalOpen(true);
+                  }}
+                  onRescheduleInterview={handleRescheduleInterview}
+                  onCancelInterview={handleCancelInterview}
                 />
               )}
 
-              {activeTab === 'analytics' && (
-                <AnalyticsPanel
-                  metrics={dashboardMetrics}
+              {activeTab === 'cv-screening' && (
+                <CVScreening 
+                  jobs={jobs}
+                  pipelineData={pipelineData}
                 />
               )}
 
@@ -447,7 +611,12 @@ const RecruiterDashboard = () => {
               <QuickActionsPanel onAction={handleQuickAction} stats={dashboardStats} />
               <InterviewScheduler
                 upcomingInterviews={interviews}
-                onScheduleInterview={() => setIsScheduleModalOpen(true)}
+                onScheduleInterview={() => {
+                  setSelectedInterview(null);
+                  setIsScheduleModalOpen(true);
+                }}
+                onRescheduleInterview={handleRescheduleInterview}
+                onCancelInterview={handleCancelInterview}
               />
             </div>
           </div>
@@ -463,11 +632,15 @@ const RecruiterDashboard = () => {
 
       <ScheduleInterviewModal
         isOpen={isScheduleModalOpen}
-        onClose={() => setIsScheduleModalOpen(false)}
+        onClose={() => {
+          setIsScheduleModalOpen(false);
+          setSelectedInterview(null);
+        }}
         onInterviewScheduled={handleInterviewScheduled}
         user={user}
         jobs={jobs}
         candidates={Object.values(pipelineData).flat()}
+        initialData={selectedInterview}
       />
 
       <CandidateDetailsModal
@@ -482,8 +655,19 @@ const RecruiterDashboard = () => {
           await handlePipelineStageChange(candidate.id, 'rejected');
         }}
       />
+
+      <RecruiterProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        user={user}
+        onUpdate={(updatedData) => {
+          const newUser = { ...user, ...updatedData };
+          setUser(newUser);
+          localStorage.setItem('prolink-user', JSON.stringify(newUser));
+        }}
+      />
     </div>
   );
 };
 
-export default RecruiterDashboard;
+export default RecruiterDashboard;

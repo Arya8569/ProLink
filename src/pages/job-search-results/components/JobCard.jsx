@@ -19,16 +19,9 @@ const formatIndianCurrency = (amount) => {
   return `₹${amount.toLocaleString('en-IN')}`;
 };
 
-const JobCard = ({ job, onSave, onApply, className = "" }) => {
+const JobCard = ({ job, onApply, className = "" }) => {
   const navigate = useNavigate();
-  const [isSaved, setIsSaved] = useState(job?.isSaved || false);
   const [isApplying, setIsApplying] = useState(false);
-
-  const handleSave = (e) => {
-    e?.stopPropagation();
-    setIsSaved(!isSaved);
-    onSave(job?.id, !isSaved);
-  };
 
   const handleApply = async (e) => {
     e?.stopPropagation();
@@ -121,14 +114,6 @@ const JobCard = ({ job, onSave, onApply, className = "" }) => {
         </div>
         
         <div className="flex items-center space-x-2 flex-shrink-0">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleSave}
-            className={`${isSaved ? 'text-accent' : 'text-muted-foreground'} hover:text-accent`}
-          >
-            <Icon name={isSaved ? "Bookmark" : "BookmarkPlus"} size={20} />
-          </Button>
           <div className="text-right">
             <div className="text-xs text-muted-foreground mb-1">AI Match</div>
             <div className={`text-sm font-semibold ${

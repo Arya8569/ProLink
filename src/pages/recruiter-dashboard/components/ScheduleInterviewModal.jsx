@@ -5,7 +5,7 @@ import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
 import Icon from '../../../components/AppIcon';
 
-const ScheduleInterviewModal = ({ isOpen, onClose, onInterviewScheduled, user, jobs, candidates }) => {
+const ScheduleInterviewModal = ({ isOpen, onClose, onInterviewScheduled, user, jobs, candidates, initialData = null }) => {
     const [formData, setFormData] = useState({
         candidate_id: '',
         job_id: '',
@@ -18,15 +18,42 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onInterviewScheduled, user, j
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
-    // Auto-select job if candidate is selected
+    // Handle initialData for rescheduling
     useEffect(() => {
-        if (formData.candidate_id) {
-            const candidate = candidates.find(c => c.id === formData.candidate_id);
+        if (initialData) {
+            const dt = new Date(initialData.date_time || initialData.dateTime);
+            setFormData({
+                candidate_id: initialData.candidate_id || (initialData.candidate?.id),
+                job_id: initialData.job_id,
+                date: dt.toISOString().split('T')[0],
+                time: dt.toTimeString().split(' ')[0].substring(0, 5),
+                type: initialData.type || 'video',
+                meeting_link: initialData.meeting_link || initialData.meetingLink || '',
+                notes: initialData.notes || ''
+            });
+        } else {
+            setFormData({
+                candidate_id: '',
+                job_id: '',
+                date: '',
+                time: '',
+                type: 'video',
+                meeting_link: '',
+                notes: ''
+            });
+        }
+    }, [initialData, isOpen]);
+
+    // Auto-select job if candidate is selected (only in create mode)
+    useEffect(() => {
+        if (formData.candidate_id && !initialData) {
+            // Fix: lookup candidate by user_id to match the value stored in candidate_id state
+            const candidate = candidates.find(c => c.user_id === formData.candidate_id);
             if (candidate) {
                 setFormData(prev => ({ ...prev, job_id: candidate.job_id }));
             }
         }
-    }, [formData.candidate_id, candidates]);
+    }, [formData.candidate_id, candidates, initialData]);
 
     if (!isOpen) return null;
 
@@ -42,50 +69,65 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onInterviewScheduled, user, j
 
         try {
             const { candidate_id, job_id, date, time, type, meeting_link, notes } = formData;
+
+            if (!candidate_id || !job_id) {
+                throw new Error('Please select a valid candidate and job.');
+            }
+
             const dateTime = new Date(`${date}T${time}`).toISOString();
 
             if (!user || !user.id) throw new Error('User authentication missing');
 
-            const { data, error } = await supabase
-                .from('interviews')
-                .insert({
-                    recruiter_id: user.id,
-                    candidate_id,
-                    job_id,
-                    date_time: dateTime,
-                    type,
-                    meeting_link,
-                    notes,
-                    status: 'scheduled'
-                })
-                .select()
-                .single();
+            let result;
+            if (initialData) {
+                // UPDATE existing interview
+                const { data, error } = await supabase
+                    .from('interviews')
+                    .update({
+                        date_time: dateTime,
+                        type,
+                        meeting_link,
+                        notes,
+                    })
+                    .eq('id', initialData.id)
+                    .select()
+                    .single();
 
-            if (error) throw error;
+                if (error) throw error;
+                result = data;
+            } else {
+                // INSERT new interview
+                const { data, error } = await supabase
+                    .from('interviews')
+                    .insert({
+                        recruiter_id: user.id,
+                        candidate_id,
+                        job_id,
+                        date_time: dateTime,
+                        type,
+                        meeting_link,
+                        notes,
+                        status: 'scheduled'
+                    })
+                    .select()
+                    .single();
 
-            // Update application status to 'interview'
-            await supabase
-                .from('applications')
-                .update({ status: 'interview' })
-                .eq('user_id', candidate_id) // Using user_id (profile id) as candidate_id
-                .eq('job_id', job_id);
+                if (error) throw error;
+                result = data;
 
-            onInterviewScheduled(data);
+                // Update application status to 'interview' (only on new schedule)
+                await supabase
+                    .from('applications')
+                    .update({ status: 'interview' })
+                    .eq('user_id', candidate_id)
+                    .eq('job_id', job_id);
+            }
+
+            onInterviewScheduled(result);
             onClose();
-            // Reset form
-            setFormData({
-                candidate_id: '',
-                job_id: '',
-                date: '',
-                time: '',
-                type: 'video',
-                meeting_link: '',
-                notes: ''
-            });
-
         } catch (err) {
-            console.error('Error scheduling interview:', err);
-            setError(err.message || 'Failed to schedule interview');
+            console.error('Error saving interview:', err);
+            setError(err.message || 'Failed to save interview');
         } finally {
             setLoading(false);
         }
@@ -107,7 +149,9 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onInterviewScheduled, user, j
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-card border border-border rounded-lg w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
                 <div className="flex items-center justify-between p-6 border-b border-border">
-                    <h2 className="text-xl font-semibold text-foreground">Schedule Interview</h2>
+                    <h2 className="text-xl font-semibold text-foreground">
+                        {initialData ? 'Reschedule Interview' : 'Schedule Interview'}
+                    </h2>
                     <Button variant="ghost" size="icon" onClick={onClose}>
                         <Icon name="X" size={20} />
                     </Button>
@@ -181,7 +225,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onInterviewScheduled, user, j
                                 Cancel
                             </Button>
                             <Button type="submit" loading={loading}>
-                                Schedule
+                                {initialData ? 'Reschedule' : 'Schedule'}
                             </Button>
                         </div>
                     </form>

@@ -8,18 +8,21 @@ import JobRecommendationCard from './components/JobRecommendationCard';
 import ProfileCompletionCard from './components/ProfileCompletionCard';
 import InterviewScheduleCard from './components/InterviewScheduleCard';
 import SkillAnalysisCard from './components/SkillAnalysisCard';
-import JobAlertsCard from './components/JobAlertsCard';
 import ApplicationMetricsChart from './components/ApplicationMetricsChart';
 import QuickActionsPanel from './components/QuickActionsPanel';
 import Icon from '../../components/AppIcon';
 import QuickApplyModal from '../job-search-results/components/QuickApplyModal';
 import { supabase } from '../../supabaseClient';
+import { extractTextFromPDF } from '../../utils/pdf-util';
+import { matchJobsWithGroq, generateSkillGapAnalysis } from '../../utils/groq';
 
 const JobSeekerDashboard = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMatching, setIsMatching] = useState(false);
+  const [resumeName, setResumeName] = useState(null);
 
   // Real Data State
   const [recommendations, setRecommendations] = useState([]);
@@ -27,7 +30,14 @@ const JobSeekerDashboard = () => {
   const [interviews, setInterviews] = useState([]);
   const [stats, setStats] = useState({
     totalApplications: 0,
-    successRate: 0
+    successRate: 0,
+    profileCompletion: 0,
+    missingItems: []
+  });
+  const [skillAnalysis, setSkillAnalysis] = useState({
+    skillGaps: [],
+    recommendations: [],
+    isLoading: false
   });
 
   // Modal State
@@ -43,7 +53,10 @@ const JobSeekerDashboard = () => {
       }
 
       const currentUser = JSON.parse(storedUser);
+      console.log('Dashboard: Current User from localStorage:', currentUser);
+      
       if (currentUser.role !== 'jobSeeker') {
+        console.warn('Dashboard: User role mismatch, redirecting...', currentUser.role);
         navigate('/recruiter-dashboard', { replace: true });
         return;
       }
@@ -51,6 +64,7 @@ const JobSeekerDashboard = () => {
       setUser(currentUser);
 
       try {
+        console.log('Dashboard: Fetching data for user ID:', currentUser.id);
         // 1. Fetch Job Recommendations (Recent 3 jobs)
         const { data: jobsData, error: jobsError } = await supabase
           .from('jobs')
@@ -69,6 +83,7 @@ const JobSeekerDashboard = () => {
 
           const recruiterMap = (recruiters || []).reduce((acc, r) => ({ ...acc, [r.id]: r }), {});
 
+
           const mappedRecs = jobsData.map(job => ({
             id: job.id,
             title: job.title,
@@ -76,7 +91,7 @@ const JobSeekerDashboard = () => {
             location: job.location,
             salaryMin: null,
             salaryMax: null,
-            matchScore: Math.floor(Math.random() * 20) + 80,
+            matchScore: null,
             tags: job.requirements ? job.requirements.slice(0, 3) : [],
             postedDate: job.posted_date
           }));
@@ -95,7 +110,7 @@ const JobSeekerDashboard = () => {
             id: app.id,
             position: app.position,
             company: app.company,
-            status: app.status.charAt(0).toUpperCase() + app.status.slice(1),
+            status: app.status, // Keep raw status for mapping components
             appliedDate: app.appliedDate,
             hasUpdate: false
           }));
@@ -114,7 +129,6 @@ const JobSeekerDashboard = () => {
           .from('interviews')
           .select('*')
           .eq('candidate_id', currentUser.id)
-          .gte('date_time', new Date().toISOString())
           .order('date_time', { ascending: true });
 
         if (!interviewsError && interviewsData) {
@@ -135,6 +149,61 @@ const JobSeekerDashboard = () => {
           setInterviews(mappedInterviews);
         }
 
+        // 4. Calculate Profile Completion
+        const missing = [];
+        let score = 0;
+        
+        if (currentUser.name) score += 20; else missing.push({ id: 'name', title: 'Full Name', description: 'Add your name to your profile', points: 20, type: 'skills' });
+        if (currentUser.email) score += 20;
+        if (currentUser.role) score += 10;
+        
+        // Check for applications as proxy for resume
+        if (appsData?.length > 0) {
+          score += 30;
+        } else {
+          missing.push({ id: 'resume', title: 'Upload Resume', description: 'Apply for a job to upload your resume', points: 30, type: 'resume' });
+        }
+        
+        // Mocking some missing items for UX if profile is very empty
+        if (score < 100 && missing.length === 0) {
+          missing.push({ id: 'skills', title: 'Add Skills', description: 'List your top professional skills', points: 15, type: 'skills' });
+          missing.push({ id: 'photo', title: 'Profile Photo', description: 'Add a professional headshot', points: 5, type: 'photo' });
+        }
+
+        setStats(prev => ({
+          ...prev,
+          profileCompletion: score,
+          missingItems: missing
+        }));
+
+        // 5. Generate Skill Gap Analysis
+        if (currentUser.id) {
+            setSkillAnalysis(prev => ({ ...prev, isLoading: true }));
+            try {
+                // Get full profile for skills
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('skills')
+                    .eq('id', currentUser.id)
+                    .single();
+                
+                const userSkills = profile?.skills || [];
+                
+                if (userSkills.length > 0 && jobsData?.length > 0) {
+                    const analysis = await generateSkillGapAnalysis(userSkills, jobsData);
+                    setSkillAnalysis({
+                        skillGaps: analysis.skillGaps || [],
+                        isLoading: false
+                    });
+                } else {
+                    setSkillAnalysis(prev => ({ ...prev, isLoading: false }));
+                }
+            } catch (err) {
+                console.error('Skill Analysis Error:', err);
+                setSkillAnalysis(prev => ({ ...prev, isLoading: false }));
+            }
+        }
+
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
       } finally {
@@ -144,6 +213,96 @@ const JobSeekerDashboard = () => {
 
     fetchDashboardData();
   }, [navigate]);
+
+  // Real-time Subscriptions
+  useEffect(() => {
+    if (!user || !user.id) return;
+
+    // 1. Listen for Application Status Updates
+    const appsChannel = supabase
+      .channel(`user-apps-${user.id}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'applications',
+        filter: `user_id=eq.${user.id}`
+      }, payload => {
+        const updatedApp = payload.new;
+        
+        // Update applications list
+        setApplications(prev => prev.map(app => 
+          app.id === updatedApp.id 
+            ? { 
+                ...app, 
+                status: updatedApp.status,
+                hasUpdate: true 
+              } 
+            : app
+        ));
+
+        // Add local notification
+        const newNotif = {
+          id: Date.now(),
+          type: 'application',
+          title: 'Application Status Updated',
+          message: `Your application for ${updatedApp.position} at ${updatedApp.company} is now ${updatedApp.status}.`,
+          timestamp: new Date().toISOString(),
+          read: false
+        };
+        setNotifications(prev => [newNotif, ...prev]);
+      })
+      .subscribe();
+
+    // 2. Listen for New Interviews
+    const interviewsChannel = supabase
+      .channel(`user-interviews-${user.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'interviews',
+        filter: `candidate_id=eq.${user.id}`
+      }, async (payload) => {
+        const newInt = payload.new;
+
+        // Fetch recruiter info for the notification
+        const { data: recProfile } = await supabase
+          .from('profiles')
+          .select('name')
+          .eq('id', newInt.recruiter_id)
+          .single();
+
+        const companyName = recProfile?.name || 'Recruiter';
+
+        // Add to interviews list
+        setInterviews(prev => [{
+          id: newInt.id,
+          position: 'Technical Interview',
+          company: companyName,
+          interviewer: companyName,
+          scheduledAt: newInt.date_time,
+          type: newInt.type,
+          meetingLink: newInt.meeting_link,
+          notes: newInt.notes
+        }, ...prev]);
+
+        // Add local notification
+        const newNotif = {
+          id: `int-${newInt.id}`,
+          type: 'interview',
+          title: 'New Interview Scheduled',
+          message: `You have a new ${newInt.type} interview with ${companyName} on ${new Date(newInt.date_time).toLocaleDateString()}.`,
+          timestamp: new Date().toISOString(),
+          read: false
+        };
+        setNotifications(prev => [newNotif, ...prev]);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(appsChannel);
+      supabase.removeChannel(interviewsChannel);
+    };
+  }, [user]);
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
@@ -164,6 +323,7 @@ const JobSeekerDashboard = () => {
   const handleSearch = (query, filters) => {
     navigate('/job-search-results', { state: { searchQuery: query, filters } });
   };
+
 
   const handleViewAllApplications = () => {
     navigate('/application-tracking');
@@ -236,14 +396,84 @@ const JobSeekerDashboard = () => {
     setSelectedJob(null);
   };
 
+  const handleResumeUpload = async (file) => {
+    if (!file) return;
+    
+    setIsMatching(true);
+    setResumeName(file.name);
+    
+    try {
+      // 1. Extract text from PDF
+      const text = await extractTextFromPDF(file);
+      console.log('Extracted Resume Text (first 100 chars):', text.substring(0, 100));
+
+      // 2. Fetch all active jobs for matching
+      const { data: allJobs, error: allJobsError } = await supabase
+        .from('jobs')
+        .select('*')
+        .eq('status', 'active');
+
+      if (allJobsError) throw allJobsError;
+
+      // 3. Call Groq for matching
+      const aiMatches = await matchJobsWithGroq(text, allJobs);
+      console.log('AI Matches from Groq:', aiMatches);
+
+      // 4. Map and Display Recommendations
+      if (aiMatches && aiMatches.length > 0) {
+        const matchedJobIds = aiMatches.map(m => m.id);
+        const matchedJobs = allJobs.filter(j => matchedJobIds.includes(j.id));
+
+        // Fetch recruiters for company names
+        const recruiterIds = [...new Set(matchedJobs.map(j => j.recruiter_id))];
+        const { data: recruiters } = await supabase
+          .from('profiles')
+          .select('id, name')
+          .in('id', recruiterIds);
+
+        const recruiterMap = (recruiters || []).reduce((acc, r) => ({ ...acc, [r.id]: r }), {});
+
+        const mappedRecs = aiMatches.map(match => {
+          const job = matchedJobs.find(j => j.id === match.id);
+          if (!job) return null;
+          return {
+            id: job.id,
+            title: job.title,
+            company: recruiterMap[job.recruiter_id]?.name || 'Confidential',
+            location: job.location,
+            salaryMin: null,
+            salaryMax: null,
+            matchScore: match.matchScore,
+            matchReason: match.reason,
+            tags: job.requirements ? job.requirements.slice(0, 3) : [],
+            postedDate: job.posted_date,
+            isAiMatch: true
+          };
+        }).filter(Boolean);
+
+        setRecommendations(mappedRecs);
+      }
+    } catch (error) {
+      console.error('Error during AI matching:', error);
+      alert(error.message || 'Failed to match jobs with resume.');
+    } finally {
+      setIsMatching(false);
+    }
+  };
+
   // --- Placeholder Handlers ---
   const handleViewCalendar = () => { };
-  const handleJoinInterview = () => { };
-  const handleUpdateProfile = () => { };
+  const handleJoinInterview = (interviewId) => {
+    const interview = interviews.find(i => i.id === interviewId);
+    if (interview && interview.meetingLink) {
+      window.open(interview.meetingLink, '_blank', 'noopener,noreferrer');
+    } else {
+      alert('Meeting link not found for this interview.');
+    }
+  };
+  const handleUpdateProfile = () => { navigate('/profile'); };
   const handleViewCourses = () => { };
   const handleStartLearning = () => { };
-  const handleCreateAlert = () => { };
-  const handleViewAlert = () => { };
   const handleViewAnalytics = () => { };
 
   const handleMarkAsRead = (notificationId) => {
@@ -285,12 +515,6 @@ const JobSeekerDashboard = () => {
               </div>
 
               <div className="hidden lg:flex items-center space-x-4">
-                <NotificationIndicator
-                  user={user}
-                  notifications={notifications}
-                  onMarkAsRead={handleMarkAsRead}
-                  onMarkAllAsRead={handleMarkAllAsRead}
-                />
                 <QuickActionMenu
                   user={user}
                   onAction={handleQuickAction}
@@ -308,6 +532,9 @@ const JobSeekerDashboard = () => {
                 recommendations={recommendations}
                 onSearch={handleSearch}
                 onApplyQuick={handleQuickApply}
+                onResumeUpload={handleResumeUpload}
+                isMatching={isMatching}
+                resumeName={resumeName}
               />
               <ApplicationStatusCard
                 applications={applications}
@@ -319,20 +546,13 @@ const JobSeekerDashboard = () => {
                 totalApplications={stats.totalApplications}
                 onViewAnalytics={handleViewAnalytics}
               />
-              <JobAlertsCard
-                alerts={[]}
-                savedSearches={[]}
-                onCreateAlert={handleCreateAlert}
-                onViewAlert={handleViewAlert}
-                onQuickApply={handleQuickApply}
-              />
             </div>
 
             {/* Right Column - Secondary Content */}
             <div className="lg:col-span-4 space-y-6">
               <ProfileCompletionCard
-                completionScore={75}
-                missingItems={[]}
+                completionScore={stats.profileCompletion}
+                missingItems={stats.missingItems}
                 achievements={[]}
                 onUpdateProfile={handleUpdateProfile}
               />
@@ -342,10 +562,8 @@ const JobSeekerDashboard = () => {
                 onJoinInterview={handleJoinInterview}
               />
               <SkillAnalysisCard
-                skillGaps={[]}
-                recommendations={[]}
-                onViewCourses={handleViewCourses}
-                onStartLearning={handleStartLearning}
+                skillGaps={skillAnalysis.skillGaps}
+                isLoading={skillAnalysis.isLoading}
               />
               <QuickActionsPanel
                 user={user}

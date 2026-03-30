@@ -38,12 +38,12 @@ const AuthContainer = ({ onLogin, isLoading }) => {
     checkSession();
   }, []);
 
-  const handleSupabaseAuthCallback = async ({ user, roleKey }) => {
+  const handleSupabaseAuthCallback = async ({ user, roleKey, companyInfo }) => {
     if (!user) return; 
 
     // Create or update the profile entry in the 'profiles' table
     try {
-        const userData = await createOrUpdateProfile(user, roleKey);
+        const userData = await createOrUpdateProfile(user, roleKey, companyInfo);
         
         // Proceed to login flow handler in LoginPage.jsx
         await onLogin(userData);
