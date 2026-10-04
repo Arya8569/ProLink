@@ -62,7 +62,9 @@ const PipelineOverview = ({ pipelineData, onStageChange, onBulkAction, onViewCan
 
   const handleBulkAction = (action) => {
     if (selectedCandidates?.length > 0) {
-      onBulkAction(action, selectedCandidates);
+      if (typeof onBulkAction === 'function') {
+        onBulkAction(action, selectedCandidates);
+      }
       setSelectedCandidates([]);
     }
   };
@@ -85,7 +87,7 @@ const PipelineOverview = ({ pipelineData, onStageChange, onBulkAction, onViewCan
               <span className="ml-1">Move</span>
             </Button>
             <Button
-              variant="outline"
+              variant="destructive"
               size="sm"
               onClick={() => handleBulkAction('reject')}
             >

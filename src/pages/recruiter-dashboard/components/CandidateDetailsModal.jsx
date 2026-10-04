@@ -67,17 +67,65 @@ const CandidateDetailsModal = ({ isOpen, onClose, candidate, onScheduleInterview
                         </div>
                     </div>
 
-                    <div className="space-y-4">
+                    <div className="space-y-5">
+                        {/* Cover Letter */}
+                        <div>
+                            <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center justify-between">
+                                <span className="flex items-center gap-2">
+                                    <Icon name="ScrollText" size={16} className="text-primary" />
+                                    Cover Letter
+                                </span>
+                                {candidate.coverLetter ? (
+                                    <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-400 px-2 py-0.5 rounded border border-emerald-300 dark:border-emerald-800">
+                                        Candidate Attached
+                                    </span>
+                                ) : (
+                                    <span className="text-[11px] text-muted-foreground italic">
+                                        Not provided
+                                    </span>
+                                )}
+                            </h3>
+                            {candidate.coverLetter ? (
+                                <div className="text-sm text-foreground bg-muted/20 p-4 rounded-lg border border-border/60 whitespace-pre-wrap leading-relaxed max-h-72 overflow-y-auto font-sans shadow-inner">
+                                    {candidate.coverLetter}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-muted-foreground italic bg-muted/10 p-3 rounded-lg border border-border/30">
+                                    No cover letter was submitted with this application.
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Application Preferences / Details */}
+                        {(candidate.expectedSalary || candidate.availabilityDate) && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {candidate.expectedSalary && (
+                                    <div className="p-3 rounded-lg bg-muted/20 border border-border/50">
+                                        <p className="text-xs text-muted-foreground">Expected Salary</p>
+                                        <p className="text-sm font-medium text-foreground">{candidate.expectedSalary}</p>
+                                    </div>
+                                )}
+                                {candidate.availabilityDate && (
+                                    <div className="p-3 rounded-lg bg-muted/20 border border-border/50">
+                                        <p className="text-xs text-muted-foreground">Availability</p>
+                                        <p className="text-sm font-medium text-foreground capitalize">{candidate.availabilityDate}</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Experience / Additional Notes */}
                         <div>
                             <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
                                 <Icon name="Briefcase" size={16} className="text-primary" />
-                                Experience
+                                Experience & Notes
                             </h3>
                             <p className="text-sm text-muted-foreground bg-muted/20 p-4 rounded-lg border border-border/50 leading-relaxed">
-                                {candidate.experience || 'No experience details available.'}
+                                {candidate.experience || candidate.additionalInfo || 'No experience details available.'}
                             </p>
                         </div>
 
+                        {/* Resume / CV */}
                         <div>
                             <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
                                 <Icon name="FileText" size={16} className="text-primary" />

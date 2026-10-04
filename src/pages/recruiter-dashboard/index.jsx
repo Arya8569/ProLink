@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import Header from '../../components/ui/Header';
 import NotificationIndicator from '../../components/ui/NotificationIndicator';
@@ -21,10 +21,27 @@ import StatusBadge from '../application-tracking/components/StatusBadge';
 
 const RecruiterDashboard = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'overview');
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedJobId, setSelectedJobId] = useState(null);
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab') || 'overview';
+    if (['overview', 'jobs', 'pipeline', 'applications', 'cv-screening', 'interviews'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
+
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    if (tabId === 'overview') {
+      setSearchParams({}, { replace: true });
+    } else {
+      setSearchParams({ tab: tabId }, { replace: true });
+    }
+  };
 
   // Real Data State
   const [jobs, setJobs] = useState([]);
@@ -115,7 +132,7 @@ const RecruiterDashboard = () => {
         if (uniqueUserIds.length > 0) {
           const { data: profilesData, error: profilesError } = await supabase
             .from('profiles')
-            .select('id, name, avatar_url, email')
+            .select('*')
             .in('id', uniqueUserIds);
 
           if (profilesError) throw profilesError;
@@ -141,16 +158,21 @@ const RecruiterDashboard = () => {
             stage: stage, // This is the processed stage for the pipeline
             rawStatus: app.status, // Keep raw status for mapping components
             matchScore: 85, // Mock score
-            experience: app.additional_info || 'See Resume',
-            lastActivity: new Date(app.created_at).toLocaleDateString(),
+            experience: profile.experience || app.additional_info || 'See Resume',
+            additionalInfo: app.additional_info,
+            coverLetter: app.cover_letter || app.coverLetter || '',
+            expectedSalary: app.expected_salary,
+            availabilityDate: app.availability_date,
+            lastActivity: new Date(app.created_at || app.appliedDate || Date.now()).toLocaleDateString(),
             priority: 'normal',
             user_id: app.user_id,
             job_id: app.job_id,
             email: profile.email,
+            phone: profile.phone || app.phone,
             resumeUrl: app.resume_storage_path
               ? supabase.storage.from('resumes').getPublicUrl(app.resume_storage_path).data.publicUrl
               : app.resume_url, // Fallback
-            rawDate: app.created_at
+            rawDate: app.created_at || app.appliedDate
           };
           processedPipeline[stage].push(processedApp);
         });
@@ -267,16 +289,16 @@ const RecruiterDashboard = () => {
         setIsScheduleModalOpen(true);
         break;
       case 'search-candidates':
-        setActiveTab('pipeline');
+        handleTabChange('pipeline');
         break;
       case 'resume-screening':
-        setActiveTab('pipeline');
+        handleTabChange('pipeline');
         break;
       case 'recent-applications':
-        setActiveTab('pipeline');
+        handleTabChange('pipeline');
         break;
       case 'pending-interviews':
-        setActiveTab('interviews');
+        handleTabChange('interviews');
         break;
       default: console.log(`Action: ${action}`);
     }
@@ -289,7 +311,11 @@ const RecruiterDashboard = () => {
 
   const handleViewCandidates = (jobId) => {
     setSelectedJobId(jobId);
-    setActiveTab('applications');
+    handleTabChange('applications');
+  };
+
+  const handleViewDetails = (jobId) => {
+    navigate(`/job-details?id=${jobId}`);
   };
 
   const handlePipelineStageChange = async (applicationId, newStage) => {
@@ -322,6 +348,63 @@ const RecruiterDashboard = () => {
 
     if (error) {
       console.error('Error updating stage:', error);
+    }
+  };
+
+  const handleBulkAction = async (action, candidateIds) => {
+    if (!candidateIds || candidateIds.length === 0) return;
+
+    if (action === 'reject') {
+      // 1. Optimistic UI update: move candidates to rejected
+      setPipelineData(prev => {
+        const newData = { ...prev };
+        const movedCandidates = [];
+
+        Object.keys(newData).forEach(stage => {
+          if (stage === 'rejected') return;
+          newData[stage] = (newData[stage] || []).filter(c => {
+            if (candidateIds.includes(c.id)) {
+              movedCandidates.push({ ...c, stage: 'rejected' });
+              return false;
+            }
+            return true;
+          });
+        });
+
+        if (!newData.rejected) newData.rejected = [];
+        newData.rejected = [...newData.rejected, ...movedCandidates];
+        return newData;
+      });
+
+      // 2. Supabase update
+      try {
+        const { error } = await supabase
+          .from('applications')
+          .update({ status: 'rejected' })
+          .in('id', candidateIds);
+
+        if (error) {
+          console.error('Error rejecting candidates in Supabase:', error);
+        }
+      } catch (err) {
+        console.error('Error in bulk reject:', err);
+      }
+    } else if (action === 'move') {
+      const stageOrder = ['applied', 'screening', 'interview', 'offer', 'hired'];
+      for (const candidateId of candidateIds) {
+        let currentStage = null;
+        Object.keys(pipelineData).forEach(stage => {
+          if (pipelineData[stage]?.some(c => c.id === candidateId)) {
+            currentStage = stage;
+          }
+        });
+
+        const nextStageIdx = stageOrder.indexOf(currentStage) + 1;
+        if (nextStageIdx > 0 && nextStageIdx < stageOrder.length) {
+          const nextStage = stageOrder[nextStageIdx];
+          await handlePipelineStageChange(candidateId, nextStage);
+        }
+      }
     }
   };
 
@@ -448,7 +531,7 @@ const RecruiterDashboard = () => {
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
                 className={`flex items-center space-x-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === tab.id
                   ? 'border-primary text-primary'
                   : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted'
@@ -470,7 +553,7 @@ const RecruiterDashboard = () => {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <h2 className="text-lg font-semibold text-foreground">Recent Job Postings</h2>
-                      <Button variant="ghost" size="sm" onClick={() => setActiveTab('jobs')}>View All</Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleTabChange('jobs')}>View All</Button>
                     </div>
 
                     {jobs.length === 0 ? (
@@ -488,7 +571,7 @@ const RecruiterDashboard = () => {
                             ...getJobStats(job.id)
                           }}
                           onViewCandidates={handleViewCandidates}
-                          onViewDetails={() => { }}
+                          onViewDetails={handleViewDetails}
                         />
                       ))
                     )}
@@ -499,6 +582,7 @@ const RecruiterDashboard = () => {
                     <PipelineOverview
                       pipelineData={pipelineData}
                       onStageChange={handlePipelineStageChange}
+                      onBulkAction={handleBulkAction}
                       onViewCandidate={handleViewCandidate}
                     />
                   </div>
@@ -512,12 +596,11 @@ const RecruiterDashboard = () => {
                       key={job.id}
                       job={{
                         ...job,
-                        ...job,
                         postedDate: new Date(job.posted_date).toLocaleDateString(),
                         ...getJobStats(job.id)
                       }}
                       onViewCandidates={handleViewCandidates}
-                      onViewDetails={() => { }}
+                      onViewDetails={handleViewDetails}
                     />
                   ))}
                 </div>
@@ -527,6 +610,7 @@ const RecruiterDashboard = () => {
                 <PipelineOverview
                   pipelineData={pipelineData}
                   onStageChange={handlePipelineStageChange}
+                  onBulkAction={handleBulkAction}
                   onViewCandidate={handleViewCandidate}
                 />
               )}
@@ -565,6 +649,12 @@ const RecruiterDashboard = () => {
                                   {candidate.name.charAt(0)}
                                 </div>
                                 <span className="font-medium text-foreground">{candidate.name}</span>
+                                {candidate.coverLetter && (
+                                  <span className="inline-flex items-center text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium" title="Cover letter attached">
+                                    <Icon name="ScrollText" size={10} className="mr-1" />
+                                    Letter
+                                  </span>
+                                )}
                               </div>
                             </td>
                             <td className="p-4 text-sm text-muted-foreground">{candidate.position}</td>

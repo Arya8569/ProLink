@@ -8,7 +8,16 @@ const Header = ({ user = null, onLogout = () => {}, onProfileClick = null }) => 
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const location = useLocation();
 
-  const isActive = (path) => location?.pathname === path;
+  const isRecruiter = user?.role === 'recruiter' || user?.role === 'admin';
+
+  const isActive = (path) => {
+    if (!location) return false;
+    const currentFull = location.pathname + (location.search || '');
+    if (path.includes('?')) {
+      return currentFull === path;
+    }
+    return location.pathname === path && (!location.search || location.search === '?tab=overview');
+  };
 
   const getNavigationItems = () => {
     if (!user) return [];
@@ -16,7 +25,7 @@ const Header = ({ user = null, onLogout = () => {}, onProfileClick = null }) => 
     const baseItems = [
       { 
         label: 'Dashboard', 
-        path: user?.role === 'recruiter' || user?.role === 'admin' ? '/recruiter-dashboard' : '/job-seeker-dashboard',
+        path: isRecruiter ? '/recruiter-dashboard' : '/job-seeker-dashboard',
         icon: 'LayoutDashboard'
       },
       { 
@@ -26,7 +35,7 @@ const Header = ({ user = null, onLogout = () => {}, onProfileClick = null }) => 
       },
       { 
         label: 'Applications', 
-        path: '/application-tracking',
+        path: isRecruiter ? '/recruiter-dashboard?tab=applications' : '/application-tracking',
         icon: 'FileText'
       }
     ];

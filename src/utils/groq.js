@@ -2,6 +2,7 @@ import axios from 'axios';
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const API_KEY = import.meta.env.VITE_GROQ_API_KEY;
+const DEFAULT_MODEL = import.meta.env.VITE_GROQ_MODEL || 'openai/gpt-oss-120b';
 
 /**
  * Matches a resume with a list of jobs using Groq AI.
@@ -16,7 +17,7 @@ export const matchJobsWithGroq = async (resumeText, jobs) => {
 
   // Sample the jobs to fit within context (e.g., top 20 or first 10000 chars)
   const jobListString = jobs.map(job => 
-    `ID: ${job.id}, Title: ${job.title}, Company: ${job.company}, Requirements: ${job.requirements ? job.requirements.join(', ') : 'N/A'}`
+    `ID: ${job.id}, Title: ${job.title}, Company: ${job.company}, Requirements: ${Array.isArray(job.requirements) ? job.requirements.join(', ') : (job.requirements || 'N/A')}`
   ).join('\n---\n');
 
   const prompt = `
@@ -33,22 +34,24 @@ export const matchJobsWithGroq = async (resumeText, jobs) => {
     ${jobListString.substring(0, 10000)} // Truncate to avoid context limit
     """
     
-    Return the result ONLY as a JSON array of objects with the following structure:
-    [
-      {
-        "id": "job_id_from_provided_list",
-        "matchScore": 85, // Integer 0-100
-        "reason": "Brief explanation of why this is a good match"
-      }
-    ]
+    Return the result ONLY as a JSON object with a "matches" key containing an array of objects:
+    {
+      "matches": [
+        {
+          "id": "job_id_from_provided_list",
+          "matchScore": 85,
+          "reason": "Brief explanation of why this is a good match"
+        }
+      ]
+    }
     
-    Only include jobs from the provided list. If no jobs match, return an empty array.
+    Only include jobs from the provided list. If no jobs match, return an empty array under "matches".
     Do not include any other text in your response.
   `;
 
   try {
     const response = await axios.post(GROQ_API_URL, {
-      model: "llama-3.3-70b-versatile", // Use a fast and capable model
+      model: DEFAULT_MODEL,
       messages: [
         { role: "system", content: "You are a precise job matching assistant." },
         { role: "user", content: prompt }
@@ -63,12 +66,12 @@ export const matchJobsWithGroq = async (resumeText, jobs) => {
     });
 
     const content = response.data.choices[0].message.content;
-    // Handle Groq potentially wrapping in a root object if response_format: {type: "json_object"} is used
     const parsed = JSON.parse(content);
     return Array.isArray(parsed) ? parsed : (parsed.matches || Object.values(parsed)[0] || []);
   } catch (error) {
     console.error('Error calling Groq API:', error);
-    throw new Error('AI matching failed. Please try again later.');
+    const detail = error.response?.data?.error?.message || error.message || '';
+    throw new Error(`AI matching failed: ${detail || 'Please try again later.'}`);
   }
 };
 
@@ -88,7 +91,7 @@ export const screenCandidateForJob = async (resumeText, job) => {
     
     Job Title: ${job.title}
     Company: ${job.company}
-    Requirements: ${job.requirements ? job.requirements.join(', ') : 'N/A'}
+    Requirements: ${Array.isArray(job.requirements) ? job.requirements.join(', ') : (job.requirements || 'N/A')}
     Description: ${job.description || 'N/A'}
     
     Candidate Resume:
@@ -108,7 +111,7 @@ export const screenCandidateForJob = async (resumeText, job) => {
 
   try {
     const response = await axios.post(GROQ_API_URL, {
-      model: "llama-3.3-70b-versatile",
+      model: DEFAULT_MODEL,
       messages: [
         { role: "system", content: "You are an expert recruiter assistant." },
         { role: "user", content: prompt }
@@ -125,7 +128,8 @@ export const screenCandidateForJob = async (resumeText, job) => {
     return JSON.parse(response.data.choices[0].message.content);
   } catch (error) {
     console.error('Error in AI screening:', error);
-    throw new Error('Candidate screening failed.');
+    const detail = error.response?.data?.error?.message || error.message || '';
+    throw new Error(`Candidate screening failed: ${detail || 'Please try again later.'}`);
   }
 };
 
@@ -178,7 +182,7 @@ export const parseResumeToProfile = async (resumeText) => {
 
   try {
     const response = await axios.post(GROQ_API_URL, {
-      model: "llama-3.3-70b-versatile",
+      model: DEFAULT_MODEL,
       messages: [
         { role: "system", content: "You are a professional resume parser." },
         { role: "user", content: prompt }
@@ -196,6 +200,7 @@ export const parseResumeToProfile = async (resumeText) => {
   } catch (error) {
     console.error('Error parsing resume with AI:', error);
     const detail = error.response?.data?.error?.message || error.message || '';
+    throw new Error(`Resume parsing failed: ${detail || 'Please try again later.'}`);
   }
 };
 
@@ -242,7 +247,7 @@ export const generateSkillGapAnalysis = async (userSkills, availableJobs) => {
 
     try {
         const response = await axios.post(GROQ_API_URL, {
-            model: "llama-3.3-70b-versatile",
+            model: DEFAULT_MODEL,
             messages: [
                 { role: "system", content: "You are a career development AI." },
                 { role: "user", content: prompt }
@@ -260,6 +265,76 @@ export const generateSkillGapAnalysis = async (userSkills, availableJobs) => {
     } catch (error) {
         console.error('Error generating skill gap analysis:', error);
         const detail = error.response?.data?.error?.message || error.message || '';
-        throw new Error(`Skill gap analysis failed: ${detail}`);
+        throw new Error(`Skill gap analysis failed: ${detail || 'Please try again later.'}`);
     }
 };
+
+/**
+ * Generates a polished, professional cover letter based on user draft/notes, job details, and optional resume.
+ * @param {string} userNotes - User's draft or points for the cover letter.
+ * @param {Object} job - Details of the job being applied for.
+ * @param {string} [resumeText] - Optional extracted text from candidate's resume.
+ * @param {string} [candidateName] - Optional name of candidate for sign-off.
+ * @returns {Promise<string>} - Professional cover letter text.
+ */
+export const generateCoverLetterWithGroq = async (userNotes, job, resumeText = '', candidateName = '') => {
+  if (!API_KEY || API_KEY === 'your-groq-api-key-here') {
+    throw new Error('Groq API key is missing. Please add VITE_GROQ_API_KEY to your .env file.');
+  }
+
+  const prompt = `
+You are an expert career consultant and executive resume writer.
+A candidate is applying for the following job and has provided their initial thoughts/draft for a cover letter.
+
+Job Details:
+- Title: ${job?.title || 'Job Position'}
+- Company: ${job?.company?.name || job?.company || 'Hiring Company'}
+- Requirements: ${Array.isArray(job?.requirements) ? job.requirements.join(', ') : (job?.requirements || 'N/A')}
+- Description: ${job?.description || 'N/A'}
+
+${resumeText ? `Candidate Resume / Background:\n"""\n${resumeText.substring(0, 4000)}\n"""\n` : ''}
+
+Candidate's Initial Draft / Key Points:
+"""
+${userNotes.substring(0, 2000)}
+"""
+
+Task:
+Transform the candidate's draft into a polished, compelling, and professional cover letter.
+- Retain the candidate's authentic intent and key points while elevating the vocabulary, structure, and professional tone.
+- Directly connect the candidate's stated interests and skills to this specific job's requirements and company.
+- Keep it concise, engaging, and well-organized (salutation, hook/opening paragraph, body paragraph highlighting relevant value and fit, and a polite call-to-action closing).
+${candidateName ? `- Sign off the letter with: "Sincerely,\n${candidateName}"` : '- Sign off with: "Sincerely,\n[Applicant]"'}
+
+Return the response ONLY as a JSON object with a "coverLetter" key:
+{
+  "coverLetter": "Full generated text here..."
+}
+`;
+
+  try {
+    const response = await axios.post(GROQ_API_URL, {
+      model: DEFAULT_MODEL,
+      messages: [
+        { role: "system", content: "You are a professional cover letter writer." },
+        { role: "user", content: prompt }
+      ],
+      temperature: 0.6,
+      response_format: { type: "json_object" }
+    }, {
+      headers: {
+        'Authorization': `Bearer ${API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const content = response.data.choices[0].message.content;
+    const parsed = JSON.parse(content);
+    return parsed.coverLetter || parsed.letter || Object.values(parsed)[0] || '';
+  } catch (error) {
+    console.error('Error generating cover letter with Groq:', error);
+    const detail = error.response?.data?.error?.message || error.message || '';
+    throw new Error(`Cover letter generation failed: ${detail || 'Please try again later.'}`);
+  }
+};
+
