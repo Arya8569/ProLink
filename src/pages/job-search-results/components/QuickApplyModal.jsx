@@ -3,6 +3,8 @@ import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
+import { generateCoverLetterWithGroq } from '../../../utils/groq';
+import { extractTextFromPDF } from '../../../utils/pdf-util';
 
 // Utility function for Indian Currency (Lakh/Crore)
 const formatIndianCurrency = (amount) => {
@@ -35,12 +37,62 @@ const QuickApplyModal = ({
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionError, setSubmissionError] = useState('');
+  const [isGeneratingCoverLetter, setIsGeneratingCoverLetter] = useState(false);
+  const [coverLetterError, setCoverLetterError] = useState('');
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
+  };
+
+  const handleRegenerateCoverLetter = async () => {
+    if (!formData?.coverLetter?.trim() || isGeneratingCoverLetter) return;
+
+    setIsGeneratingCoverLetter(true);
+    setCoverLetterError('');
+
+    try {
+      // 1. Extract text from uploaded resume if it exists and is PDF
+      let resumeText = '';
+      if (formData.resume && (formData.resume.type === 'application/pdf' || formData.resume.name?.toLowerCase().endsWith('.pdf'))) {
+        try {
+          resumeText = await extractTextFromPDF(formData.resume);
+        } catch (pdfErr) {
+          console.warn('Could not extract text from resume for cover letter context:', pdfErr);
+        }
+      }
+
+      // 2. Fetch logged in candidate's name if available in localStorage
+      let candidateName = '';
+      try {
+        const storedUser = localStorage.getItem('prolink-user');
+        if (storedUser) {
+          const userObj = JSON.parse(storedUser);
+          candidateName = userObj.name || '';
+        }
+      } catch (userErr) {
+        console.warn('Could not read user name from local storage:', userErr);
+      }
+
+      // 3. Generate with Groq AI
+      const generatedLetter = await generateCoverLetterWithGroq(
+        formData.coverLetter,
+        job,
+        resumeText,
+        candidateName
+      );
+
+      if (generatedLetter) {
+        handleInputChange('coverLetter', generatedLetter.trim());
+      }
+    } catch (err) {
+      console.error('Error regenerating cover letter:', err);
+      setCoverLetterError(err.message || 'Failed to generate cover letter with AI.');
+    } finally {
+      setIsGeneratingCoverLetter(false);
+    }
   };
 
   const handleFileChange = (e) => {
@@ -165,16 +217,65 @@ const QuickApplyModal = ({
 
             {/* Cover Letter */}
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Cover Letter
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-foreground">
+                  Cover Letter
+                </label>
+                <button
+                  type="button"
+                  onClick={handleRegenerateCoverLetter}
+                  disabled={!formData?.coverLetter?.trim() || isGeneratingCoverLetter}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition-all ${
+                    !formData?.coverLetter?.trim() || isGeneratingCoverLetter
+                      ? 'bg-muted text-muted-foreground/50 border border-transparent cursor-not-allowed opacity-60'
+                      : 'bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-primary-foreground active:scale-95 shadow-xs cursor-pointer'
+                  }`}
+                  title={
+                    !formData?.coverLetter?.trim()
+                      ? 'Type some initial thoughts below first to enable AI regeneration'
+                      : 'Polish your draft into a professional cover letter tailored to this role'
+                  }
+                >
+                  {isGeneratingCoverLetter ? (
+                    <>
+                      <Icon name="Loader2" size={13} className="animate-spin text-primary" />
+                      <span>Generating with AI...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Icon name="Sparkles" size={13} className={formData?.coverLetter?.trim() ? "text-primary" : "text-muted-foreground/50"} />
+                      <span>Regenerate with AI</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
               <textarea
                 value={formData?.coverLetter}
-                onChange={(e) => handleInputChange('coverLetter', e?.target?.value)}
-                placeholder="Tell us why you are interested in this position..."
-                rows={4}
-                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent resize-none"
+                onChange={(e) => {
+                  handleInputChange('coverLetter', e?.target?.value);
+                  if (coverLetterError) setCoverLetterError('');
+                }}
+                placeholder="Tell us why you are interested in this position... (Write a draft or rough notes and click 'Regenerate with AI' to polish it!)"
+                rows={5}
+                disabled={isGeneratingCoverLetter}
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent resize-y transition-colors ${
+                  isGeneratingCoverLetter ? 'bg-muted/40 opacity-75' : 'bg-background'
+                } border-border`}
               />
+
+              {coverLetterError && (
+                <p className="text-xs text-error mt-1">{coverLetterError}</p>
+              )}
+
+              <div className="flex items-center justify-between mt-1 text-[11px] text-muted-foreground">
+                <span>
+                  {!formData?.coverLetter?.trim()
+                    ? '💡 Type some rough points above to enable AI regeneration.'
+                    : '✨ Click "Regenerate with AI" to craft a full, professional letter.'}
+                </span>
+                <span>{formData?.coverLetter?.length || 0} characters</span>
+              </div>
             </div>
 
             {/* Expected Salary */}

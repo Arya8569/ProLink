@@ -85,7 +85,8 @@ const JobPostingCard = ({ job, onViewDetails, onEditJob, onViewCandidates }) => 
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => onEditJob(job?.id)}
+            onClick={() => (onEditJob ? onEditJob(job?.id) : onViewDetails(job?.id))}
+            title="Edit / View Details"
           >
             <Icon name="Edit" size={16} />
           </Button>
